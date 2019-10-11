@@ -18,9 +18,26 @@ import (
 type Softphone struct {
 	Rc ringcentral.RestClient
 	SipInfo definitions.SIPInfoResponse
+	fakeDomain string
+	fakeEmail string
+	fromTag string
+	toTag string
+	callId string
+	cseq int
+}
+
+func branch() string {
+	return "z9hG4bK" + uuid.New().String()
 }
 
 func (softphone *Softphone) Register() {
+	softphone.fakeDomain = uuid.New().String() + ".invalid"
+	softphone.fakeEmail = uuid.New().String() + "@" + softphone.fakeDomain
+	softphone.fromTag = uuid.New().String()
+	softphone.toTag = uuid.New().String()
+	softphone.callId = uuid.New().String()
+	softphone.cseq = rand.Intn(10000) + 1
+
 	bytes := softphone.Rc.Post("/restapi/v1.0/client-info/sip-provision", strings.NewReader(`{"sipInfo":[{"transport":"WSS"}]}`))
 	var createSipRegistrationResponse definitions.CreateSipRegistrationResponse
 	json.Unmarshal(bytes, &createSipRegistrationResponse)
@@ -40,28 +57,24 @@ func (softphone *Softphone) Register() {
 		for {
 			_, bytes, err := conn.ReadMessage()
 			if err != nil {
-				log.Fatal("read:", err)
+				log.Fatal(err)
 				return
 			}
-			println("recv: %s", string(bytes))
+			println(string(bytes))
 		}
 	}()
 
 	sipMessage := SipMessage{}
-	sipMessage.Subject = fmt.Sprintf("REGISTER sip:%s SIP/2.0", softphone.SipInfo.Domain)
+	sipMessage.Method = "REGISTER"
+	sipMessage.Address = softphone.SipInfo.Domain
 	sipMessage.Headers = make(map[string]string)
-	sipMessage.Headers["Call-ID"] = uuid.New().String()
-	fakeDomain := uuid.New().String() + ".invalid"
-	fakeEmail := uuid.New().String() + "@" + fakeDomain
-	branch := "z9hG4bK" + uuid.New().String()
-	sipMessage.Headers["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail)
-	sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", fakeDomain, branch)
-	fromTag := uuid.New().String()
-	sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, fakeDomain, fromTag)
-	sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.SipInfo.Username, fakeDomain)
-	sipMessage.Headers["CSeq"] = fmt.Sprintf("%d REGISTER", rand.Intn(10000) + 1)
+	sipMessage.Headers["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>;expires=600", softphone.fakeEmail)
+	sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
+	sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.fakeDomain, softphone.fromTag)
+	sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.SipInfo.Username, softphone.fakeDomain)
+	sipMessage.addContentLength().addCseq(softphone).addCallId(*softphone).addUserAgent()
 	println(sipMessage.ToString())
 	conn.WriteMessage(1, []byte(sipMessage.ToString()))
 
-	time.Sleep(time.Second * 6)
+	time.Sleep(time.Second * 3)
 }
