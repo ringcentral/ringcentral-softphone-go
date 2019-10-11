@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
-	"github.com/ringcentral/ringcentral"
-	sp "github.com/ringcentral/ringcentral-softphone"
 	"log"
 	"os"
 	"os/user"
+
+	"github.com/joho/godotenv"
+	"github.com/ringcentral/ringcentral"
+	sp "github.com/ringcentral/ringcentral-softphone"
 )
 
 func main() {
@@ -33,5 +34,4 @@ func main() {
 		Rc: rc,
 	}
 	softphone.Register()
-	println(softphone.SipInfo.Username)
 }
