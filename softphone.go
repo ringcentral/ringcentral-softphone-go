@@ -18,12 +18,27 @@ import (
 type Softphone struct {
 	Rc ringcentral.RestClient
 	SipInfo definitions.SIPInfoResponse
+	wsConn *websocket.Conn
 	fakeDomain string
 	fakeEmail string
 	fromTag string
 	toTag string
 	callId string
 	cseq int
+	messages chan string
+}
+
+func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
+	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
+	if expectedResp != "" {
+		for {
+			message := <- softphone.messages
+			if(strings.Contains(message, expectedResp)) {
+				return message
+			}
+		}
+	}
+	return ""
 }
 
 func branch() string {
@@ -52,15 +67,17 @@ func (softphone *Softphone) Register() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	softphone.wsConn = conn
+	softphone.messages = make(chan string)
 	go func() {
 		for {
-			_, bytes, err := conn.ReadMessage()
+			_, bytes, err := softphone.wsConn.ReadMessage()
 			if err != nil {
 				log.Fatal(err)
-				return
 			}
-			println(string(bytes))
+			message := string(bytes)
+			println(message)
+			softphone.messages <- message
 		}
 	}()
 
@@ -73,8 +90,8 @@ func (softphone *Softphone) Register() {
 	sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.fakeDomain, softphone.fromTag)
 	sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.SipInfo.Username, softphone.fakeDomain)
 	sipMessage.addContentLength().addCseq(softphone).addCallId(*softphone).addUserAgent()
-	println(sipMessage.ToString())
-	conn.WriteMessage(1, []byte(sipMessage.ToString()))
+	message := softphone.request(sipMessage, "Www-Authenticate: Digest")
+	println(message)
 
 	time.Sleep(time.Second * 3)
 }
