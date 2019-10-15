@@ -6,11 +6,14 @@ import (
 	"os/user"
 
 	"github.com/joho/godotenv"
-	"github.com/ringcentral/ringcentral"
-	sp "github.com/ringcentral/ringcentral-softphone"
+	"github.com/ringcentral/ringcentral-go"
+	sp "github.com/ringcentral/ringcentral-softphone-go"
 )
 
 func main() {
+
+	println(sp.GenerateResponse("username", "password", "realm", "REGISTER", "uri", "nonce"))
+
 	usr, err := user.Current()
 	if err != nil {
 		log.Fatal(err)

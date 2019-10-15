@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/ringcentral/ringcentral"
-	"github.com/ringcentral/ringcentral/definitions"
+	"github.com/ringcentral/ringcentral-go"
+	"github.com/ringcentral/ringcentral-go/definitions"
 	"log"
 	"math/rand"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -29,6 +30,7 @@ type Softphone struct {
 }
 
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
+	println(sipMessage.ToString())
 	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
 	if expectedResp != "" {
 		for {
@@ -89,8 +91,14 @@ func (softphone *Softphone) Register() {
 	sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
 	sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.fakeDomain, softphone.fromTag)
 	sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.SipInfo.Username, softphone.fakeDomain)
-	sipMessage.addContentLength().addCseq(softphone).addCallId(*softphone).addUserAgent()
+	sipMessage.addCseq(softphone).addCallId(*softphone).addUserAgent()
 	message := softphone.request(sipMessage, "Www-Authenticate: Digest")
+
+	authenticateHeader := SipMessage{}.FromString(message).Headers["Www-Authenticate"]
+	regex := regexp.MustCompile(`, nonce="(.+?)"`)
+	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
+	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
+	message = softphone.request(sipMessage, "SIP/2.0 200 OK")
 	println(message)
 
 	time.Sleep(time.Second * 3)

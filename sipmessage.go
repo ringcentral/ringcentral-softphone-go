@@ -2,19 +2,27 @@ package softphone
 
 import (
 	"fmt"
-	"strconv"
+	"regexp"
 	"strings"
 )
 
 type SipMessage struct {
 	Method string
 	Address string
+	Subject string
 	Headers map[string]string
 	Body string
 }
 
-func (sm *SipMessage) addContentLength() *SipMessage {
-	sm.Headers["Content-Length"] = strconv.Itoa(len(sm.Body))
+func (sm *SipMessage) addAuthorization(softphone Softphone, nonce string) *SipMessage {
+	sm.Headers["Authorization"] = generateAuthorization(softphone.SipInfo, "REGISTER", nonce)
+	return sm
+}
+
+func (sm *SipMessage) newViaBranch() *SipMessage {
+	if val, ok := sm.Headers["Via"]; ok {
+		sm.Headers["Via"] = regexp.MustCompile(";branch=z9hG4bK.+?$").ReplaceAllString(val, ";branch="+branch())
+	}
 	return sm
 }
 
@@ -42,4 +50,17 @@ func (sm SipMessage) ToString() string {
 	arr = append(arr, fmt.Sprintf("Content-Length: %d", len(sm.Body)))
 	arr = append(arr, "", sm.Body)
 	return strings.Join(arr, "\r\n")
+}
+
+func (sm SipMessage) FromString(s string) SipMessage {
+	parts := strings.Split(s, "\r\n\r\n")
+	sm.Body = strings.Join(parts[1:], "\r\n\r\n")
+	parts = strings.Split(parts[0], "\r\n")
+	sm.Subject = parts[0]
+	sm.Headers = make(map[string]string)
+	for _, line := range parts[1:] {
+		tokens := strings.Split(line, ": ")
+		sm.Headers[tokens[0]] = tokens[1]
+	}
+	return sm
 }
