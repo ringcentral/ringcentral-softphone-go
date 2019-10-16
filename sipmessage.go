@@ -65,3 +65,16 @@ func (sm SipMessage) FromString(s string) SipMessage {
 	}
 	return sm
 }
+
+func (sm SipMessage) Response(softphone Softphone, statusCode int, headers map[string]string, body string) string {
+	arr := []string { fmt.Sprintf("SIP/2.0 %d %s", statusCode, ResponseCodes[statusCode]) }
+	for _, key := range []string { "Via", "From", "Call-ID", "CSeq" } {
+		arr = append(arr, fmt.Sprintf("%s: %s", key, sm.Headers[key]))
+	}
+	for k,v := range headers {
+		arr = append(arr, fmt.Sprintf("%s: %s", k, v))
+	}
+	arr = append(arr, "Supported: outbound", fmt.Sprintf("To: %s;tag=%s", sm.Headers["To"],softphone.toTag ))
+	arr = append(arr, "", body)
+	return strings.Join(arr, "\r\n")
+}

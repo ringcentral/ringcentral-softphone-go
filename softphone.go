@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
 	"log"
@@ -13,7 +14,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 )
 
 type Softphone struct {
@@ -99,6 +99,84 @@ func (softphone *Softphone) Register() {
 	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
 	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
 	message = softphone.request(sipMessage, "SIP/2.0 200 OK")
+}
 
-	time.Sleep(time.Second * 3)
+func (softphone Softphone) WaitForIncomingCall() {
+	for {
+		message := <- softphone.messages
+		if(strings.HasPrefix(message, "INVITE sip:")) {
+			inviteMessage := SipMessage{}.FromString(message)
+
+			var re = regexp.MustCompile(`\r\nm=audio (.+?)\r\n`)
+			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\nm=audio $1\r\na=mid:1\r\n")
+			println(sdp)
+
+			offer := webrtc.SessionDescription{
+				Type: webrtc.SDPTypeOffer,
+				SDP: sdp,
+			}
+
+			mediaEngine := webrtc.MediaEngine{}
+			mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+			err := mediaEngine.PopulateFromSDP(offer)
+			if err != nil {
+				panic(err)
+			}
+
+			audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
+
+			api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
+
+			config := webrtc.Configuration{
+				ICEServers: []webrtc.ICEServer{
+					{
+						URLs: []string{"stun:74.125.194.127:19302"},
+					},
+				},
+			}
+
+			peerConnection, err := api.NewPeerConnection(config)
+			if err != nil {
+				panic(err)
+			}
+			// Set the remote SessionDescription
+			err = peerConnection.SetRemoteDescription(offer)
+			if err != nil {
+				panic(err)
+			}
+
+			// Create Track that we send video back to browser on
+			audioTrack, err := peerConnection.NewTrack(audioCodec.PayloadType, rand.Uint32(), "audio", "pion")
+			if err != nil {
+				panic(err)
+			}
+
+			// Add this newly created track to the PeerConnection
+			if _, err = peerConnection.AddTrack(audioTrack); err != nil {
+				panic(err)
+			}
+
+			// Create an answer
+			answer, err := peerConnection.CreateAnswer(nil)
+			if err != nil {
+				panic(err)
+			}
+
+			// Sets the LocalDescription, and starts our UDP listeners
+			err = peerConnection.SetLocalDescription(answer)
+			if err != nil {
+				panic(err)
+			}
+
+			dict := make(map[string]string)
+			dict["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail)
+			dict["Content-Type"] = "application/sdp"
+			responseMsg := inviteMessage.Response(softphone, 200, dict, answer.SDP)
+			println(responseMsg)
+			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+
+			// Block forever
+			select {}
+		}
+	}
 }

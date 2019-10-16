@@ -34,4 +34,6 @@ func main() {
 		Rc: rc,
 	}
 	softphone.Register()
+
+	softphone.WaitForIncomingCall()
 }
