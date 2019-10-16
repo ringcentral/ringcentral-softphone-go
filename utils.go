@@ -8,9 +8,7 @@ import (
 
 func GenerateResponse(username, password, realm, method, uri, nonce string) string {
 	ha1 := md5.Sum([]byte(fmt.Sprintf("%s:%s:%s", username, realm, password)))
-	println(fmt.Sprintf("%x", ha1))
 	ha2 := md5.Sum([]byte(fmt.Sprintf("%s:%s", method, uri)))
-	println(fmt.Sprintf("%x", ha2))
 	response := md5.Sum([]byte(fmt.Sprintf("%x:%s:%x", ha1, nonce, ha2)))
 	return fmt.Sprintf("%x", response)
 }

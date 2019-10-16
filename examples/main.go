@@ -11,9 +11,6 @@ import (
 )
 
 func main() {
-
-	println(sp.GenerateResponse("username", "password", "realm", "REGISTER", "uri", "nonce"))
-
 	usr, err := user.Current()
 	if err != nil {
 		log.Fatal(err)

@@ -99,7 +99,6 @@ func (softphone *Softphone) Register() {
 	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
 	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
 	message = softphone.request(sipMessage, "SIP/2.0 200 OK")
-	println(message)
 
 	time.Sleep(time.Second * 3)
 }

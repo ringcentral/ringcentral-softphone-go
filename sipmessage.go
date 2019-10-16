@@ -48,6 +48,7 @@ func (sm SipMessage) ToString() string {
 		arr = append(arr, fmt.Sprintf("%s: %s", k, v))
 	}
 	arr = append(arr, fmt.Sprintf("Content-Length: %d", len(sm.Body)))
+	arr = append(arr, "Max-Forwards: 70")
 	arr = append(arr, "", sm.Body)
 	return strings.Join(arr, "\r\n")
 }
