@@ -130,6 +130,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 
 
 			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
+			// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
 			//println(sdp)
 			//sdp := inviteMessage.Body
