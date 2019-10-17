@@ -17,7 +17,7 @@ type Msg struct {
 
 type Hdr struct {
 	XMLName xml.Name `xml:"Hdr"`
-	SID string `xml:"SIP,attr"`
+	SID string `xml:"SID,attr"`
 	Req string `xml:"Req,attr"`
 	From string `xml:"From,attr"`
 	To string `xml:"To,attr"`
