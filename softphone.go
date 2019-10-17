@@ -108,8 +108,31 @@ func (softphone Softphone) WaitForIncomingCall() {
 		if(strings.HasPrefix(message, "INVITE sip:")) {
 			inviteMessage := SipMessage{}.FromString(message)
 
-			var re = regexp.MustCompile(`\r\nm=audio (.+?)\r\n`)
-			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\nm=audio $1\r\na=mid:0\r\n")
+			dict := map[string]string{ "Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain) }
+			responseMsg := inviteMessage.Response(softphone, 180, dict, "")
+			println(responseMsg)
+			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+
+			var msg Msg
+			xml.Unmarshal([]byte(inviteMessage.Headers["P-rc"]), &msg)
+			sipMessage := SipMessage{}
+			sipMessage.Method = "MESSAGE"
+			sipMessage.Address = msg.Hdr.From
+			sipMessage.Headers = make(map[string]string)
+			sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
+			sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.SipInfo.Domain, softphone.fromTag)
+			sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
+			sipMessage.Headers["Content-Type"] = "x-rc/agent"
+			sipMessage.addCseq(&softphone).addCallId(softphone).addUserAgent()
+			sipMessage.Body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.SipInfo.AuthorizationId)
+			softphone.request(sipMessage, "SIP/2.0 200 OK")
+
+
+
+			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
+			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
+			//println(sdp)
+			//sdp := inviteMessage.Body
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
@@ -117,7 +140,9 @@ func (softphone Softphone) WaitForIncomingCall() {
 			}
 
 			mediaEngine := webrtc.MediaEngine{}
+			mediaEngine.RegisterDefaultCodecs()
 			mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+			mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 16000))
 			err := mediaEngine.PopulateFromSDP(offer)
 			if err != nil {
 				panic(err)
@@ -140,14 +165,31 @@ func (softphone Softphone) WaitForIncomingCall() {
 				panic(err)
 			}
 
-
-			if _, err = peerConnection.AddTransceiver(webrtc.RTPCodecTypeAudio); err != nil {
+			if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 				panic(err)
 			}
 
-
 			peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
-				println("OnTrack")
+				fmt.Printf("OnTrack\n")
+			})
+
+			peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+				fmt.Printf("OnICEConnectionStateChange %s \n", connectionState.String())
+			})
+			peerConnection.OnSignalingStateChange(func(state webrtc.SignalingState) {
+				fmt.Printf("OnSignalingStateChange %s\n", state.String())
+			})
+			peerConnection.OnDataChannel(func(channel *webrtc.DataChannel) {
+				fmt.Printf("OnDataChannel\n")
+			})
+			peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+				fmt.Printf("OnICECandidate\n")
+			})
+			peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+				fmt.Printf("OnConnectionStateChange\n")
+			})
+			peerConnection.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
+				fmt.Printf("OnICEGatheringStateChange\n")
 			})
 
 			// Set the remote SessionDescription
@@ -167,10 +209,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 			//	panic(err)
 			//}
 
-
-
-
-
 			// Create an answer
 			answer, err := peerConnection.CreateAnswer(nil)
 			if err != nil {
@@ -181,26 +219,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 				panic(err)
 			}
 
-			dict := map[string]string{ "Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain) }
-			responseMsg := inviteMessage.Response(softphone, 180, dict, "")
-			println(responseMsg)
-			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
-
-
-			var msg Msg
-			xml.Unmarshal([]byte(inviteMessage.Headers["P-rc"]), &msg)
-			sipMessage := SipMessage{}
-			sipMessage.Method = "MESSAGE"
-			sipMessage.Address = msg.Hdr.From
-			sipMessage.Headers = make(map[string]string)
-			sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
-			sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.SipInfo.Domain, softphone.fromTag)
-			sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
-			sipMessage.Headers["Content-Type"] = "x-rc/agent"
-			sipMessage.addCseq(&softphone).addCallId(softphone).addUserAgent()
-			sipMessage.Body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.SipInfo.AuthorizationId)
-			softphone.request(sipMessage, "SIP/2.0 200 OK")
-
 			dict = map[string]string{
 				"Contact": fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail),
 				"Content-Type": "application/sdp",
@@ -208,11 +226,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 			responseMsg = inviteMessage.Response(softphone, 200, dict, answer.SDP)
 			println(responseMsg)
 			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
-
-
-
-
-
 
 			// Block forever
 			select {}
