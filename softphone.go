@@ -3,10 +3,11 @@ package softphone
 import (
 	"crypto/tls"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc"
+	"github.com/pion/webrtc/v2"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
 	"log"
@@ -108,8 +109,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 			inviteMessage := SipMessage{}.FromString(message)
 
 			var re = regexp.MustCompile(`\r\nm=audio (.+?)\r\n`)
-			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\nm=audio $1\r\na=mid:1\r\n")
-			println(sdp)
+			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\nm=audio $1\r\na=mid:0\r\n")
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
@@ -123,7 +123,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 				panic(err)
 			}
 
-			audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
+			//audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
 
 			api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
 
@@ -139,41 +139,80 @@ func (softphone Softphone) WaitForIncomingCall() {
 			if err != nil {
 				panic(err)
 			}
+
+
+			if _, err = peerConnection.AddTransceiver(webrtc.RTPCodecTypeAudio); err != nil {
+				panic(err)
+			}
+
+
+			peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
+				println("OnTrack")
+			})
+
 			// Set the remote SessionDescription
 			err = peerConnection.SetRemoteDescription(offer)
 			if err != nil {
 				panic(err)
 			}
 
-			// Create Track that we send video back to browser on
-			audioTrack, err := peerConnection.NewTrack(audioCodec.PayloadType, rand.Uint32(), "audio", "pion")
-			if err != nil {
-				panic(err)
-			}
+			//// Create Track that we send audio back to browser on
+			//audioTrack, err := peerConnection.NewTrack(audioCodec.PayloadType, rand.Uint32(), "audio", "pion")
+			//if err != nil {
+			//	panic(err)
+			//}
+			//
+			//// Add this newly created track to the PeerConnection
+			//if _, err = peerConnection.AddTrack(audioTrack); err != nil {
+			//	panic(err)
+			//}
 
-			// Add this newly created track to the PeerConnection
-			if _, err = peerConnection.AddTrack(audioTrack); err != nil {
-				panic(err)
-			}
+
+
+
 
 			// Create an answer
 			answer, err := peerConnection.CreateAnswer(nil)
 			if err != nil {
 				panic(err)
 			}
-
-			// Sets the LocalDescription, and starts our UDP listeners
 			err = peerConnection.SetLocalDescription(answer)
 			if err != nil {
 				panic(err)
 			}
 
-			dict := make(map[string]string)
-			dict["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail)
-			dict["Content-Type"] = "application/sdp"
-			responseMsg := inviteMessage.Response(softphone, 200, dict, answer.SDP)
+			dict := map[string]string{ "Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain) }
+			responseMsg := inviteMessage.Response(softphone, 180, dict, "")
 			println(responseMsg)
 			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+
+
+			var msg Msg
+			xml.Unmarshal([]byte(inviteMessage.Headers["P-rc"]), &msg)
+			sipMessage := SipMessage{}
+			sipMessage.Method = "MESSAGE"
+			sipMessage.Address = msg.Hdr.From
+			sipMessage.Headers = make(map[string]string)
+			sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
+			sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.SipInfo.Domain, softphone.fromTag)
+			sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
+			sipMessage.Headers["Content-Type"] = "x-rc/agent"
+			sipMessage.addCseq(&softphone).addCallId(softphone).addUserAgent()
+			sipMessage.Body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.SipInfo.AuthorizationId)
+			softphone.request(sipMessage, "SIP/2.0 200 OK")
+
+			dict = map[string]string{
+				"Contact": fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail),
+				"Content-Type": "application/sdp",
+			}
+			responseMsg = inviteMessage.Response(softphone, 200, dict, answer.SDP)
+			println(responseMsg)
+			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+
+
+
+
+
 
 			// Block forever
 			select {}
