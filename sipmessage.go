@@ -75,6 +75,7 @@ func (sm SipMessage) Response(softphone Softphone, statusCode int, headers map[s
 		arr = append(arr, fmt.Sprintf("%s: %s", k, v))
 	}
 	arr = append(arr, "Supported: outbound", fmt.Sprintf("To: %s;tag=%s", sm.Headers["To"],softphone.toTag ))
+	arr = append(arr, fmt.Sprintf("Content-Length: %d", len(body)))
 	arr = append(arr, "", body)
 	return strings.Join(arr, "\r\n")
 }
