@@ -18,16 +18,16 @@ import (
 )
 
 type Softphone struct {
-	Rc ringcentral.RestClient
-	SipInfo definitions.SIPInfoResponse
-	wsConn *websocket.Conn
+	Rc         ringcentral.RestClient
+	SipInfo    definitions.SIPInfoResponse
+	wsConn     *websocket.Conn
 	fakeDomain string
-	fakeEmail string
-	fromTag string
-	toTag string
-	callId string
-	cseq int
-	messages chan string
+	fakeEmail  string
+	fromTag    string
+	toTag      string
+	callId     string
+	cseq       int
+	messages   chan string
 }
 
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
@@ -35,8 +35,8 @@ func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) s
 	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
 	if expectedResp != "" {
 		for {
-			message := <- softphone.messages
-			if(strings.Contains(message, expectedResp)) {
+			message := <-softphone.messages
+			if (strings.Contains(message, expectedResp)) {
 				return message
 			}
 		}
@@ -104,11 +104,11 @@ func (softphone *Softphone) Register() {
 
 func (softphone Softphone) WaitForIncomingCall() {
 	for {
-		message := <- softphone.messages
-		if(strings.HasPrefix(message, "INVITE sip:")) {
+		message := <-softphone.messages
+		if (strings.HasPrefix(message, "INVITE sip:")) {
 			inviteMessage := SipMessage{}.FromString(message)
 
-			dict := map[string]string{ "Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain) }
+			dict := map[string]string{"Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain)}
 			responseMsg := inviteMessage.Response(softphone, 180, dict, "")
 			println(responseMsg)
 			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
@@ -127,8 +127,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 			sipMessage.Body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.SipInfo.AuthorizationId)
 			softphone.request(sipMessage, "SIP/2.0 200 OK")
 
-
-
 			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
 			// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
@@ -137,7 +135,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
-				SDP: sdp,
+				SDP:  sdp,
 			}
 
 			mediaEngine := webrtc.MediaEngine{}
@@ -184,13 +182,17 @@ func (softphone Softphone) WaitForIncomingCall() {
 				fmt.Printf("OnDataChannel\n")
 			})
 			peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
-				fmt.Printf("OnICECandidate\n")
+				if candidate == nil {
+					fmt.Printf("OnICECandidate nil\n")
+				} else {
+					fmt.Printf("OnICECandidate %s\n", candidate.String())
+				}
 			})
 			peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-				fmt.Printf("OnConnectionStateChange\n")
+				fmt.Printf("OnConnectionStateChange %s\n", state.String())
 			})
 			peerConnection.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-				fmt.Printf("OnICEGatheringStateChange\n")
+				fmt.Printf("OnICEGatheringStateChange %s\n", state.String())
 			})
 
 			// Set the remote SessionDescription
@@ -221,7 +223,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 			}
 
 			dict = map[string]string{
-				"Contact": fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail),
+				"Contact":      fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail),
 				"Content-Type": "application/sdp",
 			}
 			responseMsg = inviteMessage.Response(softphone, 200, dict, answer.SDP)
