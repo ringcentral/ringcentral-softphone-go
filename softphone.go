@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v2"
-	"github.com/ringcentral/ringcentral-go"
-	"github.com/ringcentral/ringcentral-go/definitions"
 	"log"
 	"math/rand"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/pion/webrtc/v2"
+	"github.com/ringcentral/ringcentral-go"
+	"github.com/ringcentral/ringcentral-go/definitions"
 )
 
 type Softphone struct {
@@ -36,7 +37,7 @@ func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) s
 	if expectedResp != "" {
 		for {
 			message := <-softphone.messages
-			if (strings.Contains(message, expectedResp)) {
+			if strings.Contains(message, expectedResp) {
 				return message
 			}
 		}
@@ -105,7 +106,7 @@ func (softphone *Softphone) Register() {
 func (softphone Softphone) WaitForIncomingCall() {
 	for {
 		message := <-softphone.messages
-		if (strings.HasPrefix(message, "INVITE sip:")) {
+		if strings.HasPrefix(message, "INVITE sip:") {
 			inviteMessage := SipMessage{}.FromString(message)
 
 			dict := map[string]string{"Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain)}
@@ -149,7 +150,12 @@ func (softphone Softphone) WaitForIncomingCall() {
 
 			//audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
 
-			api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
+			settingEngine := webrtc.SettingEngine{}
+			if err := settingEngine.SetAnsweringDTLSRole(webrtc.DTLSRoleServer); err != nil {
+				panic(err)
+			}
+
+			api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithSettingEngine(settingEngine))
 
 			config := webrtc.Configuration{
 				ICEServers: []webrtc.ICEServer{
