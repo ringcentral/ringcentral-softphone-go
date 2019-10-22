@@ -13,6 +13,7 @@ import (
 	"log"
 	"math/rand"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -170,6 +171,22 @@ func (softphone Softphone) WaitForIncomingCall() {
 
 			peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
 				fmt.Printf("OnTrack\n")
+				codec := track.Codec()
+				if codec.Name == webrtc.Opus {
+					fmt.Println("Got Opus track, saving to disk as output.opus (48 kHz, 2 channels)")
+					f, err := os.OpenFile("temp.raw", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+					if err != nil {
+						panic(err)
+					}
+					defer f.Close()
+					for {
+						rtpPacket, err := track.ReadRTP()
+						if err != nil {
+							panic(err)
+						}
+						f.Write(rtpPacket.Payload)
+					}
+				}
 			})
 
 			peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
