@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/vorbis"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
@@ -12,6 +14,8 @@ import (
 	"github.com/pion/webrtc/v2/pkg/media/oggwriter"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
+	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/url"
@@ -32,6 +36,20 @@ type Softphone struct {
 	cseq       int
 	messages   chan string
 }
+
+type TrackReader struct {
+	track *webrtc.Track
+}
+
+func (trackReader TrackReader) Read(p []byte) (n int, err error) {
+	rtpPacket, err := trackReader.track.ReadRTP()
+	if err != nil {
+		return 0, err
+	}
+	return copy(p, rtpPacket.Payload), nil
+}
+
+func (TrackReader) Close() error { return nil }
 
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
 	println(sipMessage.ToString())
@@ -167,10 +185,10 @@ func (softphone Softphone) WaitForIncomingCall() {
 				panic(err)
 			}
 
-			oggFile, err := oggwriter.New("output.ogg", 48000, 2)
-			if err != nil {
-				panic(err)
-			}
+			//oggFile, err := oggwriter.New("output.ogg", 48000, 2)
+			//if err != nil {
+			//	panic(err)
+			//}
 			peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
 				fmt.Printf("OnTrack\n")
 				// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
@@ -187,7 +205,25 @@ func (softphone Softphone) WaitForIncomingCall() {
 				codec := track.Codec()
 				if codec.Name == webrtc.Opus {
 					fmt.Println("Got Opus track, saving to disk as output.opus (48 kHz, 2 channels)")
-					saveToDisk(oggFile, track)
+					//saveToDisk(oggFile, track)
+					//trackReader := TrackReader{}
+					//trackReader.track = track
+					//streamer, format, err := vorbis.Decode(trackReader)
+					pr, pw := io.Pipe()
+					go (func() {  // play the audio
+						streamer, format, err := vorbis.Decode(ioutil.NopCloser(pr))
+						if err != nil {
+							log.Fatal(err)
+						}
+						speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+						speaker.Play(streamer)
+					})()
+					oggWritter, err := oggwriter.NewWith(pw, 48000, 2)
+					if err != nil {
+						log.Fatal(err)
+					}
+					saveToDisk(oggWritter, track)
+
 				}
 			})
 

@@ -3,6 +3,7 @@ module github.com/ringcentral/ringcentral-softphone-go
 go 1.13
 
 require (
+	github.com/faiface/beep v1.0.1
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.1
 	github.com/joho/godotenv v1.3.0 // indirect
