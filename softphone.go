@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/at-wat/ebml-go/webm"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 	"github.com/pion/webrtc/v2/pkg/media/oggwriter"
 	"github.com/ringcentral/ringcentral-go"
@@ -17,7 +15,6 @@ import (
 	"log"
 	"math/rand"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -52,70 +49,6 @@ func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) s
 
 func branch() string {
 	return "z9hG4bK" + uuid.New().String()
-}
-
-
-type webmSaver struct {
-	audioWriter, videoWriter                 *webm.FrameWriter
-	audioStartTimestamp, videoStartTimestamp uint32
-	videoFrame                               []byte
-	videoKeyframe                            bool
-}
-
-func (s *webmSaver) PushOpus(rtpPacket *rtp.Packet) {
-	if s.audioWriter != nil {
-		if s.audioStartTimestamp == 0 {
-			s.audioStartTimestamp = rtpPacket.Timestamp
-		}
-		if rtpPacket.Timestamp < s.audioStartTimestamp {
-			panic("RTP Timestamp overflow. Please add proper timestamp processor to continuously save stream!")
-		}
-		t := (rtpPacket.Timestamp - s.audioStartTimestamp) / 48
-		if _, err := s.audioWriter.Write(true, int64(t), rtpPacket.Payload); err != nil {
-			panic(err)
-		}
-	}
-}
-
-func (s *webmSaver) InitWriter(width, height int) {
-	w, err := os.OpenFile("test.webm", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		panic(err)
-	}
-
-	ws, err := webm.NewSimpleWriter(w,
-		[]webm.TrackEntry{
-			{
-				Name:            "Audio",
-				TrackNumber:     1,
-				TrackUID:        12345,
-				CodecID:         "A_OPUS",
-				TrackType:       2,
-				DefaultDuration: 20000000,
-				Audio: &webm.Audio{
-					SamplingFrequency: 48000.0,
-					Channels:          1,
-				},
-			},
-			//{
-			//	Name:            "Video",
-			//	TrackNumber:     2,
-			//	TrackUID:        67890,
-			//	CodecID:         "V_VP8",
-			//	TrackType:       1,
-			//	DefaultDuration: 33333333,
-			//	Video: &webm.Video{
-			//		PixelWidth:  uint64(width),
-			//		PixelHeight: uint64(height),
-			//	},
-			//},
-		})
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("WebM saver has started with video width=%d, height=%d\n", width, height)
-	s.audioWriter = ws[0]
-	//s.videoWriter = ws[1]
 }
 
 func (softphone *Softphone) Register() {
@@ -200,8 +133,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
 			// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
-			//println(sdp)
-			//sdp := inviteMessage.Body
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
@@ -209,9 +140,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 			}
 
 			mediaEngine := webrtc.MediaEngine{}
-			//mediaEngine.RegisterDefaultCodecs()
 			mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-			//mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 16000))
 			err := mediaEngine.PopulateFromSDP(offer)
 			if err != nil {
 				panic(err)
@@ -259,23 +188,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 				if codec.Name == webrtc.Opus {
 					fmt.Println("Got Opus track, saving to disk as output.opus (48 kHz, 2 channels)")
 					saveToDisk(oggFile, track)
-					//f, err := os.OpenFile("temp.raw", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-					//if err != nil {
-					//	panic(err)
-					//}
-					//defer f.Close()
-					//defer oggFile.Close()
-					//saver := &webmSaver{}
-					//saver.InitWriter(800, 600)
-					//for {
-					//	rtpPacket, err := track.ReadRTP()
-					//	if err != nil {
-					//		panic(err)
-					//	}
-					//	println(len(rtpPacket.Payload))
-					//	//saver.PushOpus(rtpPacket)
-					//	//oggFile.WriteRTP(rtpPacket)
-					//}
 				}
 			})
 
