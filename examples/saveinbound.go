@@ -38,8 +38,9 @@ func main() {
 	softphone.Register()
 
 	softphone.OnTrack = func(track *webrtc.Track) {
-		os.Remove("temp.raw")
-		f, err := os.OpenFile("temp.raw", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		fileName := "temp.wav"
+		os.Remove(fileName)
+		f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			panic(err)
 		}
@@ -49,6 +50,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			// g711.DecodeUlaw(...): change u-law PCM to LPCM
 			f.Write(g711.DecodeUlaw(rtp.Payload))
 		}
 	}

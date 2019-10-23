@@ -48,6 +48,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			// g711.DecodeUlaw(...): change u-law PCM to LPCM
 			player.Write(g711.DecodeUlaw(rtp.Payload))
 		}
 	}
