@@ -212,7 +212,10 @@ func (softphone Softphone) WaitForIncomingCall() {
 				if codec.Name == webrtc.PCMU {
 					fmt.Println("Got PCMU track")
 					for {
-						rtp, _ := track.ReadRTP()
+						rtp, err := track.ReadRTP()
+						if err != nil {
+							log.Fatal(err)
+						}
 						f.Write(rtp.Payload)
 					}
 
