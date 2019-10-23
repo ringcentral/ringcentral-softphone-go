@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/hajimehoshi/oto"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
-	"github.com/zaf/g711"
 	"log"
 	"math/rand"
 	"net/url"
@@ -33,6 +31,7 @@ type Softphone struct {
 	callId     string
 	cseq       int
 	messages   chan string
+	OnTrack func(track *webrtc.Track)
 }
 
 type TrackReader struct {
@@ -209,17 +208,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 				codec := track.Codec()
 				if codec.Name == webrtc.PCMU {
 					fmt.Println("Got PCMU track")
-					player, err := oto.NewPlayer(8000, 1, 2, 1)
-					if err != nil {
-						log.Fatal(err)
-					}
-					for{
-						rtp, err := track.ReadRTP()
-						if err != nil {
-							log.Fatal(err)
-						}
-						player.Write(g711.DecodeUlaw(rtp.Payload))
-					}
+					softphone.OnTrack(track)
 				}
 			})
 
