@@ -5,20 +5,16 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/vorbis"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
-	"github.com/pion/webrtc/v2/pkg/media/oggwriter"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
-	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -149,8 +145,9 @@ func (softphone Softphone) WaitForIncomingCall() {
 			softphone.request(sipMessage, "SIP/2.0 200 OK")
 
 			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
-			// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
+			//// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
+			//sdp := inviteMessage.Body
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,
@@ -158,7 +155,9 @@ func (softphone Softphone) WaitForIncomingCall() {
 			}
 
 			mediaEngine := webrtc.MediaEngine{}
-			mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+			//mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+			mediaEngine.RegisterCodec(webrtc.NewRTPPCMUCodec(webrtc.DefaultPayloadTypePCMU, 8000))
+			//mediaEngine.RegisterCodec(webrtc.NewRTPPCMACodec(webrtc.DefaultPayloadTypePCMA, 8000))
 			err := mediaEngine.PopulateFromSDP(offer)
 			if err != nil {
 				panic(err)
@@ -202,27 +201,50 @@ func (softphone Softphone) WaitForIncomingCall() {
 					}
 				}()
 
+				f, err := os.OpenFile("temp.raw", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				if err != nil {
+					panic(err)
+				}
+
+				defer f.Close()
+
 				codec := track.Codec()
-				if codec.Name == webrtc.Opus {
-					fmt.Println("Got Opus track, saving to disk as output.opus (48 kHz, 2 channels)")
+				if codec.Name == webrtc.PCMU {
+					fmt.Println("Got PCMU track")
+					for {
+						rtp, _ := track.ReadRTP()
+						f.Write(rtp.Payload)
+					}
+
+					//player, err := oto.NewPlayer(8000, 1, 16, 4096)
+					//if err != nil {
+					//	log.Fatal(err)
+					//}
+					//for{
+					//	rtp, err := track.ReadRTP()
+					//	if err != nil {
+					//		log.Fatal(err)
+					//	}
+					//	player.Write(rtp.Payload)
+					//}
 					//saveToDisk(oggFile, track)
 					//trackReader := TrackReader{}
 					//trackReader.track = track
 					//streamer, format, err := vorbis.Decode(trackReader)
-					pr, pw := io.Pipe()
-					go (func() {  // play the audio
-						streamer, format, err := vorbis.Decode(ioutil.NopCloser(pr))
-						if err != nil {
-							log.Fatal(err)
-						}
-						speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-						speaker.Play(streamer)
-					})()
-					oggWritter, err := oggwriter.NewWith(pw, 48000, 2)
-					if err != nil {
-						log.Fatal(err)
-					}
-					saveToDisk(oggWritter, track)
+					//pr, pw := io.Pipe()
+					//go (func() {  // play the audio
+					//	streamer, format, err := vorbis.Decode(ioutil.NopCloser(pr))
+					//	if err != nil {
+					//		log.Fatal(err)
+					//	}
+					//	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+					//	speaker.Play(streamer)
+					//})()
+					//oggWritter, err := oggwriter.NewWith(pw, 48000, 2)
+					//if err != nil {
+					//	log.Fatal(err)
+					//}
+					//saveToDisk(oggWritter, track)
 
 				}
 			})
