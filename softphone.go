@@ -186,10 +186,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 				panic(err)
 			}
 
-			//oggFile, err := oggwriter.New("output.ogg", 48000, 2)
-			//if err != nil {
-			//	panic(err)
-			//}
 			peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
 				fmt.Printf("OnTrack\n")
 				// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
@@ -213,14 +209,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 				codec := track.Codec()
 				if codec.Name == webrtc.PCMU {
 					fmt.Println("Got PCMU track")
-					//for {
-					//	rtp, err := track.ReadRTP()
-					//	if err != nil {
-					//		log.Fatal(err)
-					//	}
-					//	f.Write(rtp.Payload)
-					//}
-
 					player, err := oto.NewPlayer(8000, 1, 2, 1)
 					if err != nil {
 						log.Fatal(err)
@@ -232,25 +220,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 						}
 						player.Write(g711.DecodeUlaw(rtp.Payload))
 					}
-					//saveToDisk(oggFile, track)
-					//trackReader := TrackReader{}
-					//trackReader.track = track
-					//streamer, format, err := vorbis.Decode(trackReader)
-					//pr, pw := io.Pipe()
-					//go (func() {  // play the audio
-					//	streamer, format, err := vorbis.Decode(ioutil.NopCloser(pr))
-					//	if err != nil {
-					//		log.Fatal(err)
-					//	}
-					//	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-					//	speaker.Play(streamer)
-					//})()
-					//oggWritter, err := oggwriter.NewWith(pw, 48000, 2)
-					//if err != nil {
-					//	log.Fatal(err)
-					//}
-					//saveToDisk(oggWritter, track)
-
 				}
 			})
 
