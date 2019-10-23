@@ -10,4 +10,5 @@ require (
 	github.com/pion/rtcp v1.2.1
 	github.com/pion/webrtc/v2 v2.1.10
 	github.com/ringcentral/ringcentral-go v0.0.0-20191016180526-09829c1bf7bf
+	github.com/zaf/g711 v0.0.0-20190814101024-76a4a538f52b
 )
