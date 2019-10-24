@@ -16,7 +16,10 @@ import (
 
 type Softphone struct {
 	Rc         ringcentral.RestClient
-	SipInfo    definitions.SIPInfoResponse
+	Device     definitions.SipRegistrationDeviceInfo
+	OnTrack    func(track *webrtc.Track)
+
+	sipInfo    definitions.SIPInfoResponse
 	wsConn     *websocket.Conn
 	fakeDomain string
 	fakeEmail  string
@@ -24,8 +27,7 @@ type Softphone struct {
 	toTag      string
 	callId     string
 	cseq       int
-	messages   chan string
-	OnTrack func(track *webrtc.Track)
+	responses  chan string
 }
 
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
@@ -33,9 +35,9 @@ func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) s
 	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
 	if expectedResp != "" {
 		for {
-			message := <-softphone.messages
-			if (strings.Contains(message, expectedResp)) {
-				return message
+			response := <-softphone.responses
+			if strings.Contains(response, expectedResp) {
+				return response
 			}
 		}
 	}
@@ -44,8 +46,8 @@ func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) s
 
 func (softphone Softphone) WaitForIncomingCall() {
 	for {
-		message := <-softphone.messages
-		if (strings.HasPrefix(message, "INVITE sip:")) {
+		message := <-softphone.responses
+		if strings.HasPrefix(message, "INVITE sip:") {
 			inviteMessage := SipMessage{}.FromString(message)
 
 			dict := map[string]string{"Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain)}
@@ -54,23 +56,23 @@ func (softphone Softphone) WaitForIncomingCall() {
 			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
 
 			var msg Msg
-			xml.Unmarshal([]byte(inviteMessage.Headers["P-rc"]), &msg)
+			xml.Unmarshal([]byte(inviteMessage.headers["P-rc"]), &msg)
 			sipMessage := SipMessage{}
-			sipMessage.Method = "MESSAGE"
-			sipMessage.Address = msg.Hdr.From
-			sipMessage.Headers = make(map[string]string)
-			sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
-			sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.SipInfo.Domain, softphone.fromTag)
-			sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
-			sipMessage.Headers["Content-Type"] = "x-rc/agent"
+			sipMessage.method = "MESSAGE"
+			sipMessage.address = msg.Hdr.From
+			sipMessage.headers = make(map[string]string)
+			sipMessage.headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
+			sipMessage.headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.sipInfo.Username, softphone.sipInfo.Domain, softphone.fromTag)
+			sipMessage.headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
+			sipMessage.headers["Content-Type"] = "x-rc/agent"
 			sipMessage.addCseq(&softphone).addCallId(softphone).addUserAgent()
-			sipMessage.Body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.SipInfo.AuthorizationId)
+			sipMessage.body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.sipInfo.AuthorizationId)
 			softphone.request(sipMessage, "SIP/2.0 200 OK")
 
 			var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
 			//// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
-			sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
-			//sdp := inviteMessage.Body
+			sdp := re.ReplaceAllString(inviteMessage.body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
+			//sdp := inviteMessage.body
 
 			offer := webrtc.SessionDescription{
 				Type: webrtc.SDPTypeOffer,

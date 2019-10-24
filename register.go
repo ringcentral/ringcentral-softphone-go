@@ -4,14 +4,15 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/ringcentral/ringcentral-go/definitions"
 	"log"
 	"math/rand"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/ringcentral/ringcentral-go/definitions"
 )
 
 func (softphone *Softphone) Register() {
@@ -25,19 +26,18 @@ func (softphone *Softphone) Register() {
 	bytes := softphone.Rc.Post("/restapi/v1.0/client-info/sip-provision", strings.NewReader(`{"sipInfo":[{"transport":"WSS"}]}`))
 	var createSipRegistrationResponse definitions.CreateSipRegistrationResponse
 	json.Unmarshal(bytes, &createSipRegistrationResponse)
-	softphone.SipInfo = createSipRegistrationResponse.SipInfo[0]
-	bytes2, _ := json.Marshal(softphone.SipInfo)
-	println(string(bytes2))
-	u := url.URL{Scheme: strings.ToLower(softphone.SipInfo.Transport), Host: softphone.SipInfo.OutboundProxy, Path: ""}
+	softphone.sipInfo = createSipRegistrationResponse.SipInfo[0]
+	softphone.Device = createSipRegistrationResponse.Device
+	url := url.URL{Scheme: strings.ToLower(softphone.sipInfo.Transport), Host: softphone.sipInfo.OutboundProxy, Path: ""}
 	dialer := websocket.DefaultDialer
 	dialer.Subprotocols = []string{"sip"}
 	dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	conn, _, err := dialer.Dial(u.String(), nil)
+	conn, _, err := dialer.Dial(url.String(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	softphone.wsConn = conn
-	softphone.messages = make(chan string)
+	softphone.responses = make(chan string)
 	go func() {
 		for {
 			_, bytes, err := softphone.wsConn.ReadMessage()
@@ -46,22 +46,22 @@ func (softphone *Softphone) Register() {
 			}
 			message := string(bytes)
 			println(message)
-			softphone.messages <- message
+			softphone.responses <- message
 		}
 	}()
 
 	sipMessage := SipMessage{}
-	sipMessage.Method = "REGISTER"
-	sipMessage.Address = softphone.SipInfo.Domain
-	sipMessage.Headers = make(map[string]string)
-	sipMessage.Headers["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>;expires=600", softphone.fakeEmail)
-	sipMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
-	sipMessage.Headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.SipInfo.Username, softphone.SipInfo.Domain, softphone.fromTag)
-	sipMessage.Headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.SipInfo.Username, softphone.SipInfo.Domain)
+	sipMessage.method = "REGISTER"
+	sipMessage.address = softphone.sipInfo.Domain
+	sipMessage.headers = make(map[string]string)
+	sipMessage.headers["Contact"] = fmt.Sprintf("<sip:%s;transport=ws>;expires=600", softphone.fakeEmail)
+	sipMessage.headers["Via"] = fmt.Sprintf("SIP/2.0/WSS %s;branch=%s", softphone.fakeDomain, branch())
+	sipMessage.headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.sipInfo.Username, softphone.sipInfo.Domain, softphone.fromTag)
+	sipMessage.headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.sipInfo.Username, softphone.sipInfo.Domain)
 	sipMessage.addCseq(softphone).addCallId(*softphone).addUserAgent()
 	message := softphone.request(sipMessage, "Www-Authenticate: Digest")
 
-	authenticateHeader := SipMessage{}.FromString(message).Headers["Www-Authenticate"]
+	authenticateHeader := SipMessage{}.FromString(message).headers["Www-Authenticate"]
 	regex := regexp.MustCompile(`, nonce="(.+?)"`)
 	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
 	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
