@@ -212,28 +212,7 @@ func (softphone Softphone) WaitForIncomingCall() {
 				}
 			})
 
-			peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-				fmt.Printf("OnICEConnectionStateChange %s \n", connectionState.String())
-			})
-			peerConnection.OnSignalingStateChange(func(state webrtc.SignalingState) {
-				fmt.Printf("OnSignalingStateChange %s\n", state.String())
-			})
-			peerConnection.OnDataChannel(func(channel *webrtc.DataChannel) {
-				fmt.Printf("OnDataChannel\n")
-			})
-			peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
-				if candidate == nil {
-					fmt.Printf("OnICECandidate nil\n")
-				} else {
-					fmt.Printf("OnICECandidate %s\n", candidate.String())
-				}
-			})
-			peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-				fmt.Printf("OnConnectionStateChange %s\n", state.String())
-			})
-			peerConnection.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
-				fmt.Printf("OnICEGatheringStateChange %s\n", state.String())
-			})
+			debug(peerConnection)
 
 			// Set the remote SessionDescription
 			err = peerConnection.SetRemoteDescription(offer)

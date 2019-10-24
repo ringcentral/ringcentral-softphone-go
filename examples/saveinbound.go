@@ -38,7 +38,7 @@ func main() {
 	softphone.Register()
 
 	softphone.OnTrack = func(track *webrtc.Track) {
-		fileName := "temp.wav"
+		fileName := "temp.raw"
 		os.Remove(fileName)
 		f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {

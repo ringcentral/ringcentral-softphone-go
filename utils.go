@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/pion/webrtc/v2"
-	"github.com/pion/webrtc/v2/pkg/media"
 	"github.com/ringcentral/ringcentral-go/definitions"
 )
 
@@ -31,20 +30,27 @@ func generateProxyAuthorization(sipInfo definitions.SIPInfoResponse, method, tar
 	)
 }
 
-func saveToDisk(i media.Writer, track *webrtc.Track) {
-	defer func() {
-		if err := i.Close(); err != nil {
-			panic(err)
+func debug(peerConnection *webrtc.PeerConnection) {
+	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		fmt.Printf("OnICEConnectionStateChange %s \n", connectionState.String())
+	})
+	peerConnection.OnSignalingStateChange(func(state webrtc.SignalingState) {
+		fmt.Printf("OnSignalingStateChange %s\n", state.String())
+	})
+	peerConnection.OnDataChannel(func(channel *webrtc.DataChannel) {
+		fmt.Printf("OnDataChannel\n")
+	})
+	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate == nil {
+			fmt.Printf("OnICECandidate nil\n")
+		} else {
+			fmt.Printf("OnICECandidate %s\n", candidate.String())
 		}
-	}()
-
-	for {
-		rtpPacket, err := track.ReadRTP()
-		if err != nil {
-			panic(err)
-		}
-		if err := i.WriteRTP(rtpPacket); err != nil {
-			panic(err)
-		}
-	}
+	})
+	peerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+		fmt.Printf("OnConnectionStateChange %s\n", state.String())
+	})
+	peerConnection.OnICEGatheringStateChange(func(state webrtc.ICEGathererState) {
+		fmt.Printf("OnICEGatheringStateChange %s\n", state.String())
+	})
 }
