@@ -134,8 +134,6 @@ func (softphone Softphone) WaitForIncomingCall() {
 				}
 			})
 
-			debug(peerConnection)
-
 			// Set the remote SessionDescription
 			err = peerConnection.SetRemoteDescription(offer)
 			if err != nil {
