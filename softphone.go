@@ -34,20 +34,6 @@ type Softphone struct {
 	OnTrack func(track *webrtc.Track)
 }
 
-type TrackReader struct {
-	track *webrtc.Track
-}
-
-func (trackReader TrackReader) Read(p []byte) (n int, err error) {
-	rtpPacket, err := trackReader.track.ReadRTP()
-	if err != nil {
-		return 0, err
-	}
-	return copy(p, rtpPacket.Payload), nil
-}
-
-func (TrackReader) Close() error { return nil }
-
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
 	println(sipMessage.ToString())
 	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
