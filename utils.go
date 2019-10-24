@@ -3,6 +3,7 @@ package softphone
 import (
 	"crypto/md5"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v2"
 	"github.com/ringcentral/ringcentral-go/definitions"
 )
@@ -28,6 +29,10 @@ func generateProxyAuthorization(sipInfo definitions.SIPInfoResponse, method, tar
 		sipInfo.AuthorizationId, sipInfo.Domain, nonce, targetUser, sipInfo.Domain,
 		GenerateResponse(sipInfo.AuthorizationId, sipInfo.Password, sipInfo.Domain, method, "sip:"+targetUser+"@"+sipInfo.Domain, nonce),
 	)
+}
+
+func branch() string {
+	return "z9hG4bK" + uuid.New().String()
 }
 
 func debug(peerConnection *webrtc.PeerConnection) {
