@@ -47,6 +47,7 @@ func (softphone *Softphone) Register() {
 			message := string(bytes)
 			println(message)
 			softphone.responses <- message
+			// softphone.notifications <- message
 		}
 	}()
 
@@ -66,4 +67,6 @@ func (softphone *Softphone) Register() {
 	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
 	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
 	message = softphone.request(sipMessage, "SIP/2.0 200 OK")
+
+	softphone.WaitForIncomingCall()
 }

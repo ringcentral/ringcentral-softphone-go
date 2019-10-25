@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/hajimehoshi/oto"
-	"github.com/pion/webrtc/v2"
-	"github.com/zaf/g711"
 	"log"
 	"os"
 	"os/user"
+
+	"github.com/hajimehoshi/oto"
+	"github.com/pion/webrtc/v2"
+	"github.com/zaf/g711"
 
 	"github.com/joho/godotenv"
 	"github.com/ringcentral/ringcentral-go"
@@ -36,14 +37,17 @@ func main() {
 	softphone := sp.Softphone{
 		Rc: rc,
 	}
-	softphone.Register()
+
+	softphone.OnInvite = func(inviteMessage sp.SipMessage) {
+		softphone.Answer(inviteMessage)
+	}
 
 	softphone.OnTrack = func(track *webrtc.Track) {
 		player, err := oto.NewPlayer(8000, 1, 2, 1)
 		if err != nil {
 			log.Fatal(err)
 		}
-		for{
+		for {
 			rtp, err := track.ReadRTP()
 			if err != nil {
 				log.Fatal(err)
@@ -53,5 +57,5 @@ func main() {
 		}
 	}
 
-	softphone.WaitForIncomingCall()
+	softphone.Register()
 }
