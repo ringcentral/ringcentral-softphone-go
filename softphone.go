@@ -3,30 +3,50 @@ package softphone
 import (
 	"encoding/xml"
 	"fmt"
+	"math/rand"
+	"strings"
+
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v2"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
-	"strings"
 )
 
 type Softphone struct {
-	Rc         ringcentral.RestClient
-	Device     definitions.SipRegistrationDeviceInfo
-	OnTrack    func(track *webrtc.Track)
-	OnInvite	func(inviteMessage SipMessage)
+	Device   definitions.SipRegistrationDeviceInfo
+	OnTrack  func(track *webrtc.Track)
+	OnInvite func(inviteMessage SipMessage)
 
-	sipInfo    definitions.SIPInfoResponse
-	wsConn     *websocket.Conn
-	fakeDomain string
-	fakeEmail  string
-	fromTag    string
-	toTag      string
-	callId     string
-	cseq       int
+	rc               ringcentral.RestClient
+	sipInfo          definitions.SIPInfoResponse
+	wsConn           *websocket.Conn
+	fakeDomain       string
+	fakeEmail        string
+	fromTag          string
+	toTag            string
+	callId           string
+	cseq             int
+	responses        chan string
+	messageListeners []func(message string)
+}
 
-	responses  chan string
-	notifications chan string
+func NewSoftPhone(rc ringcentral.RestClient) *Softphone {
+	softphone := Softphone{}
+	softphone.rc = rc
+
+	softphone.fakeDomain = uuid.New().String() + ".invalid"
+	softphone.fakeEmail = uuid.New().String() + "@" + softphone.fakeDomain
+	softphone.fromTag = uuid.New().String()
+	softphone.toTag = uuid.New().String()
+	softphone.callId = uuid.New().String()
+	softphone.cseq = rand.Intn(10000) + 1
+
+	softphone.messageListeners = []func(message string){}
+	softphone.OnInvite = func(inviteMessage SipMessage) {}
+	softphone.OnTrack = func(track *webrtc.Track) {}
+
+	return &softphone
 }
 
 func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {

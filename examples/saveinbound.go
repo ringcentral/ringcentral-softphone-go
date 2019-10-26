@@ -32,9 +32,7 @@ func main() {
 		os.Getenv("RINGCENTRAL_EXTENSION"),
 		os.Getenv("RINGCENTRAL_PASSWORD"),
 	)
-	softphone := sp.Softphone{
-		Rc: rc,
-	}
+	softphone := sp.NewSoftPhone(rc)
 	softphone.Register()
 
 	softphone.OnTrack = func(track *webrtc.Track) {
@@ -45,7 +43,7 @@ func main() {
 			panic(err)
 		}
 		defer f.Close()
-		for{
+		for {
 			rtp, err := track.ReadRTP()
 			if err != nil {
 				log.Fatal(err)

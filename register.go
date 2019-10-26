@@ -5,25 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/ringcentral/ringcentral-go/definitions"
 )
 
 func (softphone *Softphone) Register() {
-	softphone.fakeDomain = uuid.New().String() + ".invalid"
-	softphone.fakeEmail = uuid.New().String() + "@" + softphone.fakeDomain
-	softphone.fromTag = uuid.New().String()
-	softphone.toTag = uuid.New().String()
-	softphone.callId = uuid.New().String()
-	softphone.cseq = rand.Intn(10000) + 1
-
-	bytes := softphone.Rc.Post("/restapi/v1.0/client-info/sip-provision", strings.NewReader(`{"sipInfo":[{"transport":"WSS"}]}`))
+	bytes := softphone.rc.Post("/restapi/v1.0/client-info/sip-provision", strings.NewReader(`{"sipInfo":[{"transport":"WSS"}]}`))
 	var createSipRegistrationResponse definitions.CreateSipRegistrationResponse
 	json.Unmarshal(bytes, &createSipRegistrationResponse)
 	softphone.sipInfo = createSipRegistrationResponse.SipInfo[0]
@@ -47,7 +38,9 @@ func (softphone *Softphone) Register() {
 			message := string(bytes)
 			println(message)
 			softphone.responses <- message
-			// softphone.notifications <- message
+			for _, ml := range softphone.messageListeners {
+				go ml(message)
+			}
 		}
 	}()
 

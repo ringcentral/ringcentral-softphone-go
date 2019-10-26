@@ -34,9 +34,7 @@ func main() {
 		os.Getenv("RINGCENTRAL_EXTENSION"),
 		os.Getenv("RINGCENTRAL_PASSWORD"),
 	)
-	softphone := sp.Softphone{
-		Rc: rc,
-	}
+	softphone := sp.NewSoftPhone(rc)
 
 	softphone.OnInvite = func(inviteMessage sp.SipMessage) {
 		softphone.Answer(inviteMessage)
