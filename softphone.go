@@ -55,7 +55,7 @@ func (softphone *Softphone) removeMessageListener(key string) {
 }
 
 func (softphone *Softphone) request(sipMessage SipMessage, responseHandler func(string) bool) {
-	log.Debug(sipMessage.ToString())
+	log.Debug("↑↑↑\n", sipMessage.ToString())
 	if responseHandler != nil {
 		var key string
 		key = softphone.addMessageListener(func(message string) {
@@ -72,7 +72,7 @@ func (softphone *Softphone) request(sipMessage SipMessage, responseHandler func(
 }
 
 func (softphone *Softphone) response(message string) {
-	log.Debug(message)
+	log.Debug("↑↑↑\n", message)
 	err := softphone.wsConn.WriteMessage(1, []byte(message))
 	if err != nil {
 		log.Fatal(err)

@@ -35,7 +35,7 @@ func (softphone *Softphone) register() {
 				log.Fatal(err)
 			}
 			message := string(bytes)
-			log.Debug(message)
+			log.Debug("↓↓↓\n", message)
 			for _, ml := range softphone.messageListeners {
 				go ml(message)
 			}

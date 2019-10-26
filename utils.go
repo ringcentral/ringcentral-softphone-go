@@ -43,4 +43,8 @@ func configureLog() {
 	} else {
 		log.SetLevel(log.FatalLevel)
 	}
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: false,
+		FullTimestamp: true,
+	})
 }
