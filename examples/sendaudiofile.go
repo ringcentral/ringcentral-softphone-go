@@ -32,6 +32,10 @@ func main() {
 	)
 	softphone := sp.NewSoftPhone(rc)
 
+	softphone.OnInvite = func(inviteMessage sp.SipMessage) {
+		softphone.Answer(inviteMessage)
+	}
+
 	// todo: read audio file to remote
 
 	softphone.OpenToInvite()
