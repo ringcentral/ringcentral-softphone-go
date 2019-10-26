@@ -13,7 +13,7 @@ import (
 	"github.com/ringcentral/ringcentral-go/definitions"
 )
 
-func (softphone *Softphone) Register() {
+func (softphone *Softphone) register() {
 	bytes := softphone.rc.Post("/restapi/v1.0/client-info/sip-provision", strings.NewReader(`{"sipInfo":[{"transport":"WSS"}]}`))
 	var createSipRegistrationResponse definitions.CreateSipRegistrationResponse
 	json.Unmarshal(bytes, &createSipRegistrationResponse)

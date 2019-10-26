@@ -33,7 +33,6 @@ func main() {
 		os.Getenv("RINGCENTRAL_PASSWORD"),
 	)
 	softphone := sp.NewSoftPhone(rc)
-	softphone.Register()
 
 	softphone.OnTrack = func(track *webrtc.Track) {
 		fileName := "temp.raw"

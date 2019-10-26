@@ -45,6 +45,8 @@ func NewSoftPhone(rc ringcentral.RestClient) *Softphone {
 	softphone.OnInvite = func(inviteMessage SipMessage) {}
 	softphone.OnTrack = func(track *webrtc.Track) {}
 
+	softphone.register()
+
 	return &softphone
 }
 

@@ -31,7 +31,6 @@ func main() {
 		os.Getenv("RINGCENTRAL_PASSWORD"),
 	)
 	softphone := sp.NewSoftPhone(rc)
-	softphone.Register()
 
 	// todo: read audio file to remote
 
