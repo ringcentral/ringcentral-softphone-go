@@ -28,7 +28,6 @@ func (softphone *Softphone) Register() {
 		log.Fatal(err)
 	}
 	softphone.wsConn = conn
-	softphone.responses = make(chan string)
 	go func() {
 		for {
 			_, bytes, err := softphone.wsConn.ReadMessage()
@@ -37,7 +36,6 @@ func (softphone *Softphone) Register() {
 			}
 			message := string(bytes)
 			println(message)
-			softphone.responses <- message
 			for _, ml := range softphone.messageListeners {
 				go ml(message)
 			}
@@ -53,13 +51,15 @@ func (softphone *Softphone) Register() {
 	sipMessage.headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.sipInfo.Username, softphone.sipInfo.Domain, softphone.fromTag)
 	sipMessage.headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.sipInfo.Username, softphone.sipInfo.Domain)
 	sipMessage.addCseq(softphone).addCallId(*softphone).addUserAgent()
-	message := softphone.request(sipMessage, "Www-Authenticate: Digest")
-
-	authenticateHeader := SipMessage{}.FromString(message).headers["Www-Authenticate"]
-	regex := regexp.MustCompile(`, nonce="(.+?)"`)
-	nonce := regex.FindStringSubmatch(authenticateHeader)[1]
-	sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
-	message = softphone.request(sipMessage, "SIP/2.0 200 OK")
-
-	softphone.WaitForIncomingCall()
+	softphone.request(sipMessage, func(message string) bool {
+		if(strings.Contains(message, "Www-Authenticate: Digest")) {
+			authenticateHeader := SipMessage{}.FromString(message).headers["Www-Authenticate"]
+			regex := regexp.MustCompile(`, nonce="(.+?)"`)
+			nonce := regex.FindStringSubmatch(authenticateHeader)[1]
+			sipMessage.addAuthorization(*softphone, nonce).addCseq(softphone).newViaBranch()
+			softphone.request(sipMessage, nil)
+			return true
+		}
+		return false
+	})
 }

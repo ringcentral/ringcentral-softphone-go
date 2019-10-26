@@ -56,4 +56,8 @@ func main() {
 	}
 
 	softphone.Register()
+	softphone.WaitForIncomingCall()
+
+	// Block forever
+	select {}
 }

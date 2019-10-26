@@ -27,8 +27,7 @@ type Softphone struct {
 	toTag            string
 	callId           string
 	cseq             int
-	responses        chan string
-	messageListeners []func(message string)
+	messageListeners map[string]func(string)
 }
 
 func NewSoftPhone(rc ringcentral.RestClient) *Softphone {
@@ -42,35 +41,43 @@ func NewSoftPhone(rc ringcentral.RestClient) *Softphone {
 	softphone.callId = uuid.New().String()
 	softphone.cseq = rand.Intn(10000) + 1
 
-	softphone.messageListeners = []func(message string){}
+	softphone.messageListeners = make(map[string]func(string))
 	softphone.OnInvite = func(inviteMessage SipMessage) {}
 	softphone.OnTrack = func(track *webrtc.Track) {}
 
 	return &softphone
 }
 
-func (softphone Softphone) request(sipMessage SipMessage, expectedResp string) string {
-	println(sipMessage.ToString())
-	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
-	if expectedResp != "" {
-		for {
-			response := <-softphone.responses
-			if strings.Contains(response, expectedResp) {
-				return response
-			}
-		}
-	}
-	return ""
+func (softphone *Softphone) addMessageListener(messageListener func(string)) string {
+	key := uuid.New().String()
+	softphone.messageListeners[key] = messageListener
+	return key
+}
+func (softphone *Softphone) removeMessageListener(key string) {
+	delete(softphone.messageListeners, key)
 }
 
-func (softphone Softphone) WaitForIncomingCall() {
-	for {
-		message := <-softphone.responses
+func (softphone *Softphone) request(sipMessage SipMessage, responseHandler func(string)bool) {
+	println(sipMessage.ToString())
+	if responseHandler != nil {
+		var key string
+		key = softphone.addMessageListener(func(message string) {
+			done := responseHandler(message)
+			if done {
+				softphone.removeMessageListener(key)
+			}
+		})
+	}
+	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
+}
+
+func (softphone *Softphone) WaitForIncomingCall() {
+	softphone.addMessageListener(func(message string) {
 		if strings.HasPrefix(message, "INVITE sip:") {
 			inviteMessage := SipMessage{}.FromString(message)
 
 			dict := map[string]string{"Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain)}
-			responseMsg := inviteMessage.Response(softphone, 180, dict, "")
+			responseMsg := inviteMessage.Response(*softphone, 180, dict, "")
 			println(responseMsg)
 			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
 
@@ -84,11 +91,11 @@ func (softphone Softphone) WaitForIncomingCall() {
 			sipMessage.headers["From"] = fmt.Sprintf("<sip:%s@%s>;tag=%s", softphone.sipInfo.Username, softphone.sipInfo.Domain, softphone.fromTag)
 			sipMessage.headers["To"] = fmt.Sprintf("<sip:%s>", msg.Hdr.From)
 			sipMessage.headers["Content-Type"] = "x-rc/agent"
-			sipMessage.addCseq(&softphone).addCallId(softphone).addUserAgent()
+			sipMessage.addCseq(softphone).addCallId(*softphone).addUserAgent()
 			sipMessage.body = fmt.Sprintf(`<Msg><Hdr SID="%s" Req="%s" From="%s" To="%s" Cmd="17"/><Bdy Cln="%s"/></Msg>`, msg.Hdr.SID, msg.Hdr.Req, msg.Hdr.To, msg.Hdr.From, softphone.sipInfo.AuthorizationId)
-			softphone.request(sipMessage, "SIP/2.0 200 OK")
+			softphone.request(sipMessage, nil)
 
 			softphone.OnInvite(inviteMessage)
 		}
-	}
+	})
 }
