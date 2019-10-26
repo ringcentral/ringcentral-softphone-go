@@ -4,16 +4,14 @@ import (
 	"fmt"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
-	"os"
 	"regexp"
 	"time"
 )
 
 func (softphone Softphone) Answer(inviteMessage SipMessage) {
 	var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
-	//// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
+	// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 	sdp := re.ReplaceAllString(inviteMessage.body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
-	//sdp := inviteMessage.body
 
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
@@ -60,13 +58,6 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 				}
 			}
 		}()
-
-		f, err := os.OpenFile("temp.raw", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			panic(err)
-		}
-
-		defer f.Close()
 
 		codec := track.Codec()
 		if codec.Name == webrtc.PCMU {
