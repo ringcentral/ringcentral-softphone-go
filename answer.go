@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v2"
+	"math/rand"
 	"regexp"
 	"time"
 )
@@ -19,13 +20,12 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 	}
 
 	mediaEngine := webrtc.MediaEngine{}
-	mediaEngine.RegisterCodec(webrtc.NewRTPPCMUCodec(webrtc.DefaultPayloadTypePCMU, 8000))
 	err := mediaEngine.PopulateFromSDP(offer)
 	if err != nil {
 		panic(err)
 	}
-
-	//audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
+	mediaEngine.RegisterCodec(webrtc.NewRTPPCMUCodec(webrtc.DefaultPayloadTypePCMU, 8000))
+	audioCodec := mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeAudio)[0]
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine))
 
@@ -72,16 +72,15 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 		panic(err)
 	}
 
-	//// Create Track that we send audio back to browser on
-	//audioTrack, err := peerConnection.NewTrack(audioCodec.PayloadType, rand.Uint32(), "audio", "pion")
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//// Add this newly created track to the PeerConnection
-	//if _, err = peerConnection.AddTrack(audioTrack); err != nil {
-	//	panic(err)
-	//}
+	// Create Track that we send audio back to browser on
+	audioTrack, err := peerConnection.NewTrack(audioCodec.PayloadType, rand.Uint32(), "audio", "pion")
+	if err != nil {
+		panic(err)
+	}
+	// Add this newly created track to the PeerConnection
+	if _, err = peerConnection.AddTrack(audioTrack); err != nil {
+		panic(err)
+	}
 
 	// Create an answer
 	answer, err := peerConnection.CreateAnswer(nil)
