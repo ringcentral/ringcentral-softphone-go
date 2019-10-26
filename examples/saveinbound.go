@@ -34,6 +34,10 @@ func main() {
 	)
 	softphone := sp.NewSoftPhone(rc)
 
+	softphone.OnInvite = func(inviteMessage sp.SipMessage) {
+		softphone.Answer(inviteMessage)
+	}
+
 	softphone.OnTrack = func(track *webrtc.Track) {
 		fileName := "temp.raw"
 		os.Remove(fileName)
@@ -53,6 +57,9 @@ func main() {
 	}
 
 	softphone.OpenToInvite()
+
+	// Block forever
+	select {}
 }
 
 // to play the saved audio:  play -b 16 -e signed -c 1 -r 8000 temp.raw

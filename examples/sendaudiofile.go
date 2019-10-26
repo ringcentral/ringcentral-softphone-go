@@ -35,4 +35,7 @@ func main() {
 	// todo: read audio file to remote
 
 	softphone.OpenToInvite()
+
+	// Block forever
+	select {}
 }
