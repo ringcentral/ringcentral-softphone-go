@@ -11,26 +11,26 @@ import "encoding/xml"
 
 type Msg struct {
 	XMLName xml.Name `xml:"Msg"`
-	Hdr Hdr `xml:"Hdr"`
-	Bdy Bdy `xml:"Bdy"`
+	Hdr     Hdr      `xml:"Hdr"`
+	Bdy     Bdy      `xml:"Bdy"`
 }
 
 type Hdr struct {
 	XMLName xml.Name `xml:"Hdr"`
-	SID string `xml:"SID,attr"`
-	Req string `xml:"Req,attr"`
-	From string `xml:"From,attr"`
-	To string `xml:"To,attr"`
-	Cmd string `xml:"Cmd,attr"`
+	SID     string   `xml:"SID,attr"`
+	Req     string   `xml:"Req,attr"`
+	From    string   `xml:"From,attr"`
+	To      string   `xml:"To,attr"`
+	Cmd     string   `xml:"Cmd,attr"`
 }
 
 type Bdy struct {
-	XMLName xml.Name `xml:"Bdy"`
-	SrvLvl string `xml:"SrvLvl,attr"`
-	SrvLvlExt string `xml:"SrvLvlExt,attr"`
-	Phn string `xml:"Phn,attr"`
-	Nm string `xml:"Nm,attr"`
-	ToPhn string `xml:"ToPhn,attr"`
-	ToNm string `xml:"ToNm,attr"`
-	RecUrl string `xml:"RecUrl,attr"`
+	XMLName   xml.Name `xml:"Bdy"`
+	SrvLvl    string   `xml:"SrvLvl,attr"`
+	SrvLvlExt string   `xml:"SrvLvlExt,attr"`
+	Phn       string   `xml:"Phn,attr"`
+	Nm        string   `xml:"Nm,attr"`
+	ToPhn     string   `xml:"ToPhn,attr"`
+	ToNm      string   `xml:"ToNm,attr"`
+	RecUrl    string   `xml:"RecUrl,attr"`
 }

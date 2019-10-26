@@ -34,5 +34,5 @@ func main() {
 
 	// todo: read audio file to remote
 
-	softphone.WaitForIncomingCall()
+	softphone.OpenToInvite()
 }

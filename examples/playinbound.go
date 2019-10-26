@@ -55,7 +55,7 @@ func main() {
 		}
 	}
 
-	softphone.WaitForIncomingCall()
+	softphone.OpenToInvite()
 
 	// Block forever
 	select {}

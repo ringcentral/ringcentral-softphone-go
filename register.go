@@ -52,7 +52,7 @@ func (softphone *Softphone) register() {
 	sipMessage.headers["To"] = fmt.Sprintf("<sip:%s@%s>", softphone.sipInfo.Username, softphone.sipInfo.Domain)
 	sipMessage.addCseq(softphone).addCallId(*softphone).addUserAgent()
 	softphone.request(sipMessage, func(message string) bool {
-		if(strings.Contains(message, "Www-Authenticate: Digest")) {
+		if strings.Contains(message, "Www-Authenticate: Digest") {
 			authenticateHeader := SipMessage{}.FromString(message).headers["Www-Authenticate"]
 			regex := regexp.MustCompile(`, nonce="(.+?)"`)
 			nonce := regex.FindStringSubmatch(authenticateHeader)[1]

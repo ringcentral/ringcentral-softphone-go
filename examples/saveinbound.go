@@ -52,7 +52,7 @@ func main() {
 		}
 	}
 
-	softphone.WaitForIncomingCall()
+	softphone.OpenToInvite()
 }
 
 // to play the saved audio:  play -b 16 -e signed -c 1 -r 8000 temp.raw

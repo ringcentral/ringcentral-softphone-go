@@ -43,7 +43,7 @@ func (sm *SipMessage) addUserAgent() *SipMessage {
 }
 
 func (sm SipMessage) ToString() string {
-	arr := []string { fmt.Sprintf("%s sip:%s SIP/2.0", sm.method, sm.address) }
+	arr := []string{fmt.Sprintf("%s sip:%s SIP/2.0", sm.method, sm.address)}
 	for k, v := range sm.headers {
 		arr = append(arr, fmt.Sprintf("%s: %s", k, v))
 	}
@@ -67,14 +67,14 @@ func (sm SipMessage) FromString(s string) SipMessage {
 }
 
 func (sm SipMessage) Response(softphone Softphone, statusCode int, headers map[string]string, body string) string {
-	arr := []string { fmt.Sprintf("SIP/2.0 %d %s", statusCode, ResponseCodes[statusCode]) }
-	for _, key := range []string { "Via", "From", "Call-ID", "CSeq" } {
+	arr := []string{fmt.Sprintf("SIP/2.0 %d %s", statusCode, ResponseCodes[statusCode])}
+	for _, key := range []string{"Via", "From", "Call-ID", "CSeq"} {
 		arr = append(arr, fmt.Sprintf("%s: %s", key, sm.headers[key]))
 	}
-	for k,v := range headers {
+	for k, v := range headers {
 		arr = append(arr, fmt.Sprintf("%s: %s", k, v))
 	}
-	arr = append(arr, "Supported: outbound", fmt.Sprintf("To: %s;tag=%s", sm.headers["To"],softphone.toTag ))
+	arr = append(arr, "Supported: outbound", fmt.Sprintf("To: %s;tag=%s", sm.headers["To"], softphone.toTag))
 	arr = append(arr, fmt.Sprintf("Content-Length: %d", len(body)))
 	arr = append(arr, "", body)
 	return strings.Join(arr, "\r\n")
