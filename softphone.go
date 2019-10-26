@@ -6,14 +6,14 @@ import (
 	"github.com/pion/webrtc/v2"
 	"github.com/ringcentral/ringcentral-go"
 	"github.com/ringcentral/ringcentral-go/definitions"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 )
 
 type Softphone struct {
-	Device   definitions.SipRegistrationDeviceInfo
-	OnTrack  func(track *webrtc.Track)
-	OnInvite func(inviteMessage SipMessage)
-
+	Device           definitions.SipRegistrationDeviceInfo
+	OnTrack          func(track *webrtc.Track)
+	OnInvite         func(inviteMessage SipMessage)
 	rc               ringcentral.RestClient
 	sipInfo          definitions.SIPInfoResponse
 	wsConn           *websocket.Conn
@@ -28,22 +28,20 @@ type Softphone struct {
 }
 
 func NewSoftPhone(rc ringcentral.RestClient) *Softphone {
+	configureLog()
 	softphone := Softphone{}
+	softphone.OnInvite = func(inviteMessage SipMessage) {}
+	softphone.OnTrack = func(track *webrtc.Track) {}
 	softphone.rc = rc
-
 	softphone.fakeDomain = uuid.New().String() + ".invalid"
 	softphone.fakeEmail = uuid.New().String() + "@" + softphone.fakeDomain
 	softphone.fromTag = uuid.New().String()
 	softphone.toTag = uuid.New().String()
 	softphone.callId = uuid.New().String()
 	softphone.cseq = rand.Intn(10000) + 1
-
 	softphone.messageListeners = make(map[string]func(string))
-	softphone.OnInvite = func(inviteMessage SipMessage) {}
-	softphone.OnTrack = func(track *webrtc.Track) {}
 
 	softphone.register()
-
 	return &softphone
 }
 
@@ -57,7 +55,7 @@ func (softphone *Softphone) removeMessageListener(key string) {
 }
 
 func (softphone *Softphone) request(sipMessage SipMessage, responseHandler func(string) bool) {
-	println(sipMessage.ToString())
+	log.Debug(sipMessage.ToString())
 	if responseHandler != nil {
 		var key string
 		key = softphone.addMessageListener(func(message string) {
@@ -67,5 +65,16 @@ func (softphone *Softphone) request(sipMessage SipMessage, responseHandler func(
 			}
 		})
 	}
-	softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
+	err := softphone.wsConn.WriteMessage(1, []byte(sipMessage.ToString()))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (softphone *Softphone) response(message string) {
+	log.Debug(message)
+	err := softphone.wsConn.WriteMessage(1, []byte(message))
+	if err != nil {
+		log.Fatal(err)
+	}
 }

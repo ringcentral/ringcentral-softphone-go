@@ -107,8 +107,7 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 		"Content-Type": "application/sdp",
 	}
 	responseMsg := inviteMessage.Response(softphone, 200, dict, answer.SDP)
-	println(responseMsg)
-	softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+	softphone.response(responseMsg)
 
 	// Block forever
 	select {}

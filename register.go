@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/url"
 	"regexp"
 	"strings"
@@ -35,7 +35,7 @@ func (softphone *Softphone) register() {
 				log.Fatal(err)
 			}
 			message := string(bytes)
-			println(message)
+			log.Debug(message)
 			for _, ml := range softphone.messageListeners {
 				go ml(message)
 			}

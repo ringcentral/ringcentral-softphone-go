@@ -13,8 +13,7 @@ func (softphone *Softphone) OpenToInvite() {
 
 			dict := map[string]string{"Contact": fmt.Sprintf(`<sip:%s;transport=ws>`, softphone.fakeDomain)}
 			responseMsg := inviteMessage.Response(*softphone, 180, dict, "")
-			println(responseMsg)
-			softphone.wsConn.WriteMessage(1, []byte(responseMsg))
+			softphone.response(responseMsg)
 
 			var msg Msg
 			xml.Unmarshal([]byte(inviteMessage.headers["P-rc"]), &msg)

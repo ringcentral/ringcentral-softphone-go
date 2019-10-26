@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/ringcentral/ringcentral-go/definitions"
+	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 func generateResponse(username, password, realm, method, uri, nonce string) string {
@@ -32,4 +34,13 @@ func generateProxyAuthorization(sipInfo definitions.SIPInfoResponse, method, tar
 
 func branch() string {
 	return "z9hG4bK" + uuid.New().String()
+}
+
+func configureLog() {
+	logLevel := os.Getenv("RINGCENTRAL_SOFTPHONE_DEBUG")
+	if logLevel == "all" {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.FatalLevel)
+	}
 }
