@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (softphone Softphone) Answer(inviteMessage SipMessage) {
+func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
 	// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 	sdp := re.ReplaceAllString(inviteMessage.body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
@@ -81,6 +81,8 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 	if _, err = peerConnection.AddTrack(audioTrack); err != nil {
 		panic(err)
 	}
+	softphone.AudioTrack = audioTrack
+	//audioTrack.WriteSample()
 
 	// Create an answer
 	answer, err := peerConnection.CreateAnswer(nil)
@@ -96,9 +98,6 @@ func (softphone Softphone) Answer(inviteMessage SipMessage) {
 		"Contact":      fmt.Sprintf("<sip:%s;transport=ws>", softphone.fakeEmail),
 		"Content-Type": "application/sdp",
 	}
-	responseMsg := inviteMessage.Response(softphone, 200, dict, answer.SDP)
+	responseMsg := inviteMessage.Response(*softphone, 200, dict, answer.SDP)
 	softphone.response(responseMsg)
-
-	// Block forever
-	select {}
 }

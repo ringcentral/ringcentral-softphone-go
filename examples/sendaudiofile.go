@@ -1,13 +1,14 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
+	"github.com/pion/webrtc/v2/pkg/media"
+	"github.com/ringcentral/ringcentral-go"
+	sp "github.com/ringcentral/ringcentral-softphone-go"
+	"io"
 	"log"
 	"os"
 	"os/user"
-
-	"github.com/joho/godotenv"
-	"github.com/ringcentral/ringcentral-go"
-	sp "github.com/ringcentral/ringcentral-softphone-go"
 )
 
 func main() {
@@ -34,9 +35,23 @@ func main() {
 
 	softphone.OnInvite = func(inviteMessage sp.SipMessage) {
 		softphone.Answer(inviteMessage)
-	}
 
-	// todo: read audio file to remote
+		go func() {
+			file, err := os.Open("temp.raw")
+			if err != nil {
+				log.Fatal(err)
+			}
+			p := make([]byte, 8000)
+			for {
+				_, err := io.ReadFull(file, p)
+				if err != nil {
+					break
+				}
+				softphone.AudioTrack.WriteSample(media.Sample{p, 8000})
+				file.Seek(8000, 1)
+			}
+		}()
+	}
 
 	softphone.OpenToInvite()
 

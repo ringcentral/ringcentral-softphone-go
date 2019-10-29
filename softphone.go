@@ -14,6 +14,7 @@ type Softphone struct {
 	Device           definitions.SipRegistrationDeviceInfo
 	OnTrack          func(track *webrtc.Track)
 	OnInvite         func(inviteMessage SipMessage)
+	AudioTrack       *webrtc.Track
 	rc               ringcentral.RestClient
 	sipInfo          definitions.SIPInfoResponse
 	wsConn           *websocket.Conn
