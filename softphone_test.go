@@ -31,5 +31,10 @@ func TestAuthorize(t *testing.T) {
 		t.Error("No SipInfo")
 	}
 
+	softphone := Softphone{
+		createSipRegistrationResponse,
+	}
+	softphone.Register()
+
 	rc.Revoke()
 }
