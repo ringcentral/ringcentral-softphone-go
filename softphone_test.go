@@ -37,6 +37,8 @@ func TestAuthorize(t *testing.T) {
 	softphone.Register()
 
 	rc.Revoke()
+
+	select {} //block forever
 }
 
 func TestSipMessage(t *testing.T) {

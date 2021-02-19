@@ -52,13 +52,13 @@ func FromStringToSipMessage(message string) (sipMessage SipMessage) {
 // Softphone softphone
 type Softphone struct {
 	CreateSipRegistrationResponse ringcentral.CreateSipRegistrationResponse
-	messageListeners              map[string]func(string)
+	MessageListeners              map[string]func(string)
 	Conn                          *websocket.Conn
 }
 
 // Register register the softphone
 func (softphone *Softphone) Register() {
-	softphone.messageListeners = make(map[string]func(string))
+	softphone.MessageListeners = make(map[string]func(string))
 	sipInfo := softphone.CreateSipRegistrationResponse.SipInfo[0]
 	url := url.URL{Scheme: strings.ToLower(sipInfo.Transport), Host: sipInfo.OutboundProxy, Path: ""}
 	dialer := websocket.DefaultDialer
@@ -68,20 +68,39 @@ func (softphone *Softphone) Register() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	softphone.Conn = conn
 	go func() {
 		for {
-			_, bytes, err := conn.ReadMessage()
+			_, bytes, err := softphone.Conn.ReadMessage()
 			if err != nil {
 				log.Fatal(err)
 			}
 			message := string(bytes)
 			log.Println("↓↓↓\n", message)
-			for _, messageListener := range softphone.messageListeners {
+			for _, messageListener := range softphone.MessageListeners {
 				go messageListener(message)
 			}
 		}
 	}()
-
+	userAgent := "github.com/ringcentral/ringcentral-softphone-go"
+	fakeDomain := fmt.Sprintf("%s.invalid", uuid.New().String())
+	fakeEmail := fmt.Sprintf("%s@%s", uuid.New().String(), fakeDomain)
+	registerMessage := SipMessage{
+		Subject: fmt.Sprintf("REGISTER sip:%s SIP/2.0", sipInfo.Domain),
+		Headers: map[string]string{
+			"Call-ID":        uuid.New().String(),
+			"User-Agent":     userAgent,
+			"Contact":        fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail),
+			"Via":            fmt.Sprintf("SIP/2.0/WSS %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String()),
+			"From":           fmt.Sprintf("<sip:%s@%s>;tag=%s", sipInfo.Username, sipInfo.Domain, uuid.New().String()),
+			"To":             fmt.Sprintf("<sip:%s@%s>", sipInfo.Username, sipInfo.Domain),
+			"CSeq":           "8082 REGISTER",
+			"Content-Length": "0",
+			"Max-Forwards":   "70",
+		},
+		Body: "",
+	}
+	softphone.Send(registerMessage, nil)
 }
 
 // Send send message via WebSocket
@@ -97,7 +116,7 @@ func (softphone *Softphone) Send(sipMessage SipMessage, responseHandler func(str
 			}
 		})
 	}
-	err := softphone.Conn.WriteMessage(1, []byte(sipMessage.ToString()))
+	err := softphone.Conn.WriteMessage(1, []byte(stringMessage))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,9 +124,9 @@ func (softphone *Softphone) Send(sipMessage SipMessage, responseHandler func(str
 
 func (softphone *Softphone) addMessageListener(messageListener func(string)) string {
 	key := uuid.New().String()
-	softphone.messageListeners[key] = messageListener
+	softphone.MessageListeners[key] = messageListener
 	return key
 }
 func (softphone *Softphone) removeMessageListener(key string) {
-	delete(softphone.messageListeners, key)
+	delete(softphone.MessageListeners, key)
 }
