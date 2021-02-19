@@ -2,6 +2,7 @@ package softphone
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -37,4 +38,16 @@ func TestAuthorize(t *testing.T) {
 	softphone.Register()
 
 	rc.Revoke()
+}
+
+func TestSipMessage(t *testing.T) {
+	sipMessage := SipMessage{
+		Subject: "SIP/2.0 100 Trying",
+		Headers: map[string]string{
+			"CSeq":    "8082 REGISTER",
+			"Call-ID": "21ee3d44-98d6-4bde-b541-fdc4dce63b13",
+		},
+		Body: "",
+	}
+	log.Println(sipMessage.ToString())
 }
