@@ -46,21 +46,18 @@ func (softphone *Softphone) Register() {
 			}
 		}
 	}()
-	userAgent := "github.com/ringcentral/ringcentral-softphone-go"
 	fakeDomain := fmt.Sprintf("%s.invalid", uuid.New().String())
 	fakeEmail := fmt.Sprintf("%s@%s", uuid.New().String(), fakeDomain)
 	registerMessage := SipMessage{
 		Subject: fmt.Sprintf("REGISTER sip:%s SIP/2.0", sipInfo.Domain),
 		Headers: map[string]string{
-			"Call-ID":        uuid.New().String(),
-			"User-Agent":     userAgent,
-			"Contact":        fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail),
-			"Via":            fmt.Sprintf("SIP/2.0/WSS %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String()),
-			"From":           fmt.Sprintf("<sip:%s@%s>;tag=%s", sipInfo.Username, sipInfo.Domain, uuid.New().String()),
-			"To":             fmt.Sprintf("<sip:%s@%s>", sipInfo.Username, sipInfo.Domain),
-			"CSeq":           "8082 REGISTER",
-			"Content-Length": "0",
-			"Max-Forwards":   "70",
+			"Call-ID":      uuid.New().String(),
+			"Contact":      fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail),
+			"Via":          fmt.Sprintf("SIP/2.0/WSS %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String()),
+			"From":         fmt.Sprintf("<sip:%s@%s>;tag=%s", sipInfo.Username, sipInfo.Domain, uuid.New().String()),
+			"To":           fmt.Sprintf("<sip:%s@%s>", sipInfo.Username, sipInfo.Domain),
+			"CSeq":         "8082 REGISTER",
+			"Max-Forwards": "70",
 		},
 		Body: "",
 	}

@@ -14,6 +14,11 @@ type SipMessage struct {
 
 // ToString from SipMessage to string message
 func (sipMessage SipMessage) ToString() (message string) {
+	if _, ok := sipMessage.Headers["Content-Length"]; ok {
+	} else {
+		sipMessage.Headers["Content-Length"] = fmt.Sprintf("%d", len(sipMessage.Body))
+	}
+	sipMessage.Headers["User-Agent"] = "github.com/ringcentral/ringcentral-softphone-go"
 	list := []string{}
 	list = append(list, sipMessage.Subject)
 	for key, value := range sipMessage.Headers {
