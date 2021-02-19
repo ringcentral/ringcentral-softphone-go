@@ -77,6 +77,13 @@ func (softphone *Softphone) Register() {
 		}
 		return false
 	})
+
+	softphone.addMessageListener(func(strMessage string) {
+		if strings.Contains(strMessage, "INVITE sip:") {
+			log.Println("received invite message")
+			// todo: handle invite
+		}
+	})
 }
 
 // Send send message via WebSocket
