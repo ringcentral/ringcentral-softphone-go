@@ -32,7 +32,7 @@ func TestAuthorize(t *testing.T) {
 	}
 
 	softphone := Softphone{
-		createSipRegistrationResponse,
+		CreateSipRegistrationResponse: createSipRegistrationResponse,
 	}
 	softphone.Register()
 

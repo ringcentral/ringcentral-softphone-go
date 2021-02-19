@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/ringcentral/ringcentral-go"
 )
@@ -18,7 +19,7 @@ type SipMessage struct {
 	Body    string
 }
 
-// ToString to string message
+// ToString from SipMessage to string message
 func (sipMessage SipMessage) ToString() (message string) {
 	list := []string{}
 	list = append(list, sipMessage.Subject)
@@ -50,12 +51,15 @@ func FromStringToSipMessage(message string) (sipMessage SipMessage) {
 
 // Softphone softphone
 type Softphone struct {
-	createSipRegistrationResponse ringcentral.CreateSipRegistrationResponse
+	CreateSipRegistrationResponse ringcentral.CreateSipRegistrationResponse
+	messageListeners              map[string]func(string)
+	Conn                          *websocket.Conn
 }
 
 // Register register the softphone
-func (softphone Softphone) Register() {
-	sipInfo := softphone.createSipRegistrationResponse.SipInfo[0]
+func (softphone *Softphone) Register() {
+	softphone.messageListeners = make(map[string]func(string))
+	sipInfo := softphone.CreateSipRegistrationResponse.SipInfo[0]
 	url := url.URL{Scheme: strings.ToLower(sipInfo.Transport), Host: sipInfo.OutboundProxy, Path: ""}
 	dialer := websocket.DefaultDialer
 	dialer.Subprotocols = []string{"sip"}
@@ -72,6 +76,38 @@ func (softphone Softphone) Register() {
 			}
 			message := string(bytes)
 			log.Println("↓↓↓\n", message)
+			for _, messageListener := range softphone.messageListeners {
+				go messageListener(message)
+			}
 		}
 	}()
+
+}
+
+// Send send message via WebSocket
+func (softphone *Softphone) Send(sipMessage SipMessage, responseHandler func(string) bool) {
+	stringMessage := sipMessage.ToString()
+	log.Println("↑↑↑\n", stringMessage)
+	if responseHandler != nil {
+		var key string
+		key = softphone.addMessageListener(func(message string) {
+			done := responseHandler(message)
+			if done {
+				softphone.removeMessageListener(key)
+			}
+		})
+	}
+	err := softphone.Conn.WriteMessage(1, []byte(sipMessage.ToString()))
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (softphone *Softphone) addMessageListener(messageListener func(string)) string {
+	key := uuid.New().String()
+	softphone.messageListeners[key] = messageListener
+	return key
+}
+func (softphone *Softphone) removeMessageListener(key string) {
+	delete(softphone.messageListeners, key)
 }
