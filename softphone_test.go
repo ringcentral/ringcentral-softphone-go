@@ -2,7 +2,6 @@ package softphone
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -49,5 +48,10 @@ func TestSipMessage(t *testing.T) {
 		},
 		Body: "",
 	}
-	log.Println(sipMessage.ToString())
+
+	sipMessage2 := FromStringToSipMessage(sipMessage.ToString())
+
+	if sipMessage.ToString() != sipMessage2.ToString() {
+		t.Error("SipMessage was changed during transformation")
+	}
 }
