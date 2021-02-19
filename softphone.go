@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -100,7 +101,18 @@ func (softphone *Softphone) Register() {
 		},
 		Body: "",
 	}
-	softphone.Send(registerMessage, nil)
+	softphone.Send(registerMessage, func(strMessage string) bool {
+		if strings.Contains(strMessage, "SIP/2.0 401 Unauthorized") {
+			unAuthMessage := FromStringToSipMessage(strMessage)
+			authHeader := unAuthMessage.Headers["WWW-Authenticate"]
+			regex := regexp.MustCompile(", nonce=\"(.+?)\"")
+			match := regex.FindStringSubmatch(authHeader)
+			nonce := match[1]
+			log.Println(nonce)
+			return true
+		}
+		return false
+	})
 }
 
 // Send send message via WebSocket
