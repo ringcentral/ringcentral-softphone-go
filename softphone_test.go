@@ -3,13 +3,24 @@ package softphone
 import (
 	"encoding/json"
 	"os"
+	"os/user"
 	"strings"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/ringcentral/ringcentral-go"
 )
 
+func loadDotEnv() {
+	usr, err := user.Current()
+	if err == nil {
+		// ignore error because we fallback to sys env vars
+		godotenv.Overload(usr.HomeDir + "/.env.prod")
+	}
+}
+
 func TestAuthorize(t *testing.T) {
+	loadDotEnv()
 	rc := ringcentral.RestClient{
 		ClientID:     os.Getenv("RINGCENTRAL_CLIENT_ID"),
 		ClientSecret: os.Getenv("RINGCENTRAL_CLIENT_SECRET"),
@@ -42,6 +53,7 @@ func TestAuthorize(t *testing.T) {
 }
 
 func TestSipMessage(t *testing.T) {
+	loadDotEnv()
 	sipMessage := SipMessage{
 		Subject: "SIP/2.0 100 Trying",
 		Headers: map[string]string{
