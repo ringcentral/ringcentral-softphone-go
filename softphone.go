@@ -18,6 +18,7 @@ type Softphone struct {
 	CreateSipRegistrationResponse ringcentral.CreateSipRegistrationResponse
 	MessageListeners              map[string]func(string)
 	Conn                          *websocket.Conn
+	OnInvite                      func(inviteMessage SipMessage)
 }
 
 // Register register the softphone
@@ -80,36 +81,12 @@ func (softphone *Softphone) Register() {
 
 	softphone.addMessageListener(func(strMessage string) {
 		if strings.Contains(strMessage, "INVITE sip:") {
-			log.Println("received invite message")
-			// todo: handle invite
+			softphone.OnInvite(FromStringToSipMessage(strMessage))
 		}
 	})
 }
 
-// Send send message via WebSocket
-func (softphone *Softphone) Send(sipMessage SipMessage, responseHandler func(string) bool) {
-	stringMessage := sipMessage.ToString()
-	log.Println("↑↑↑\n", stringMessage)
-	if responseHandler != nil {
-		var key string
-		key = softphone.addMessageListener(func(message string) {
-			done := responseHandler(message)
-			if done {
-				softphone.removeMessageListener(key)
-			}
-		})
-	}
-	err := softphone.Conn.WriteMessage(1, []byte(stringMessage))
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+// Answer answer an incoming call
+func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 
-func (softphone *Softphone) addMessageListener(messageListener func(string)) string {
-	key := uuid.New().String()
-	softphone.MessageListeners[key] = messageListener
-	return key
-}
-func (softphone *Softphone) removeMessageListener(key string) {
-	delete(softphone.MessageListeners, key)
 }
