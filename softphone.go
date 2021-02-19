@@ -69,7 +69,6 @@ func (softphone *Softphone) Register() {
 			nonce := match[1]
 
 			registerMessage.Headers["Authorization"] = GenerateAuthorization(sipInfo, "REGISTER", nonce)
-			registerMessage.Headers["CSeq"] = "8083 REGISTER"
 			registerMessage.IncreaseSeq()
 			registerMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/TCP %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String())
 			softphone.Send(registerMessage, nil)

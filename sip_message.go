@@ -3,6 +3,7 @@ package softphone
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -32,7 +33,13 @@ func (sipMessage SipMessage) ToString() (message string) {
 // IncreaseSeq increase CSeq
 func (sipMessage *SipMessage) IncreaseSeq() {
 	if value, ok := sipMessage.Headers["CSeq"]; ok {
-		log.Println(value)
+		tokens := strings.Split(value, " ")
+		i, err := strconv.Atoi(tokens[0])
+		if err != nil {
+			log.Fatal("CSeq doesn't start with an integer")
+		}
+		tokens[0] = fmt.Sprintf("%d", i+1)
+		sipMessage.Headers["CSeq"] = strings.Join(tokens, " ")
 	}
 }
 
