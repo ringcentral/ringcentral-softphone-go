@@ -51,13 +51,12 @@ func (softphone *Softphone) Register() {
 	registerMessage := SipMessage{
 		Subject: fmt.Sprintf("REGISTER sip:%s SIP/2.0", sipInfo.Domain),
 		Headers: map[string]string{
-			"Call-ID":      uuid.New().String(),
-			"Contact":      fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail),
-			"Via":          fmt.Sprintf("SIP/2.0/WSS %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String()),
-			"From":         fmt.Sprintf("<sip:%s@%s>;tag=%s", sipInfo.Username, sipInfo.Domain, uuid.New().String()),
-			"To":           fmt.Sprintf("<sip:%s@%s>", sipInfo.Username, sipInfo.Domain),
-			"CSeq":         "8082 REGISTER",
-			"Max-Forwards": "70",
+			"Call-ID": uuid.New().String(),
+			"Contact": fmt.Sprintf("<sip:%s;transport=ws>;expires=600", fakeEmail),
+			"Via":     fmt.Sprintf("SIP/2.0/WSS %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String()),
+			"From":    fmt.Sprintf("<sip:%s@%s>;tag=%s", sipInfo.Username, sipInfo.Domain, uuid.New().String()),
+			"To":      fmt.Sprintf("<sip:%s@%s>", sipInfo.Username, sipInfo.Domain),
+			"CSeq":    "8082 REGISTER",
 		},
 		Body: "",
 	}
@@ -68,10 +67,10 @@ func (softphone *Softphone) Register() {
 			regex := regexp.MustCompile(", nonce=\"(.+?)\"")
 			match := regex.FindStringSubmatch(authHeader)
 			nonce := match[1]
-			log.Println(nonce)
 
 			registerMessage.Headers["Authorization"] = GenerateAuthorization(sipInfo, "REGISTER", nonce)
 			registerMessage.Headers["CSeq"] = "8083 REGISTER"
+			registerMessage.IncreaseSeq()
 			registerMessage.Headers["Via"] = fmt.Sprintf("SIP/2.0/TCP %s;branch=z9hG4bK%s", fakeDomain, uuid.New().String())
 			softphone.Send(registerMessage, nil)
 

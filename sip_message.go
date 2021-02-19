@@ -2,6 +2,7 @@ package softphone
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -14,8 +15,7 @@ type SipMessage struct {
 
 // ToString from SipMessage to string message
 func (sipMessage SipMessage) ToString() (message string) {
-	if _, ok := sipMessage.Headers["Content-Length"]; ok {
-	} else {
+	if _, ok := sipMessage.Headers["Content-Length"]; !ok {
 		sipMessage.Headers["Content-Length"] = fmt.Sprintf("%d", len(sipMessage.Body))
 	}
 	sipMessage.Headers["User-Agent"] = "github.com/ringcentral/ringcentral-softphone-go"
@@ -27,6 +27,13 @@ func (sipMessage SipMessage) ToString() (message string) {
 	list = append(list, "")
 	list = append(list, sipMessage.Body)
 	return strings.Join(list, "\r\n")
+}
+
+// IncreaseSeq increase CSeq
+func (sipMessage *SipMessage) IncreaseSeq() {
+	if value, ok := sipMessage.Headers["CSeq"]; ok {
+		log.Println(value)
+	}
 }
 
 // FromStringToSipMessage from string message to SipMessage
