@@ -118,6 +118,7 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	if err != nil {
 		panic(err)
 	}
+	peerConnection.CreateDataChannel("audio", nil)
 
 	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 		panic(err)
@@ -137,6 +138,12 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	if err != nil {
 		panic(err)
 	}
+
+	peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		log.Println("OnTrack")
+		codec := track.Codec()
+		log.Println(codec)
+	})
 
 	responseMessage := SipMessage{
 		Subject: "SIP/2.0 200 OK",
