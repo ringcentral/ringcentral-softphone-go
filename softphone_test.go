@@ -2,7 +2,6 @@ package softphone
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 	"os/user"
 	"strings"
@@ -49,7 +48,7 @@ func TestSoftphone(t *testing.T) {
 	softphone.Register()
 
 	softphone.OnInvite = func(inviteMessage SipMessage) {
-		log.Println("OnInvite handler")
+		softphone.Answer(inviteMessage)
 	}
 
 	rc.Revoke()
