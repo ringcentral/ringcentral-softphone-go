@@ -1,6 +1,10 @@
 package softphone
 
-import "testing"
+import (
+	"fmt"
+	"reflect"
+	"testing"
+)
 
 func TestSipMessage(t *testing.T) {
 	loadDotEnv()
@@ -15,7 +19,14 @@ func TestSipMessage(t *testing.T) {
 
 	sipMessage2 := FromStringToSipMessage(sipMessage.ToString())
 
-	if sipMessage.ToString() != sipMessage2.ToString() {
-		t.Error("SipMessage was changed during transformation")
+	if sipMessage.Subject != sipMessage2.Subject {
+		t.Error("SipMessage Subject was changed during transformation")
+	}
+	if sipMessage.Body != sipMessage2.Body {
+		t.Error("SipMessage Body was changed during transformation")
+	}
+	sipMessage.Headers["Content-Length"] = fmt.Sprintf("%d", len(sipMessage.Body))
+	if !reflect.DeepEqual(sipMessage.Headers, sipMessage2.Headers) {
+		t.Error("SipMessage Headers was changed during transformation")
 	}
 }
