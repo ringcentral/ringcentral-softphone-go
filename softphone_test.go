@@ -2,12 +2,14 @@ package softphone
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"os/user"
 	"strings"
 	"testing"
 
 	"github.com/joho/godotenv"
+	"github.com/pion/webrtc/v3"
 	"github.com/ringcentral/ringcentral-go"
 )
 
@@ -49,6 +51,24 @@ func TestSoftphone(t *testing.T) {
 
 	softphone.OnInvite = func(inviteMessage SipMessage) {
 		softphone.Answer(inviteMessage)
+	}
+
+	softphone.OnTrack = func(track *webrtc.TrackRemote) {
+		fileName := "temp.raw"
+		os.Remove(fileName)
+		f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		for {
+			rtp, _, err := track.ReadRTP()
+			if err != nil {
+				log.Fatal(err)
+			}
+			// g711.DecodeUlaw(...): change u-law PCM to LPCM
+			f.Write(rtp.Payload)
+		}
 	}
 
 	rc.Revoke()

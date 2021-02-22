@@ -20,6 +20,7 @@ type Softphone struct {
 	MessageListeners              map[string]func(string)
 	Conn                          *websocket.Conn
 	OnInvite                      func(inviteMessage SipMessage)
+	OnTrack                       func(track *webrtc.TrackRemote)
 }
 
 var fakeDomain = fmt.Sprintf("%s.invalid", uuid.New().String())
@@ -145,6 +146,9 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 		log.Println("OnTrack")
 		codec := track.Codec()
 		log.Println(codec)
+		if softphone.OnTrack != nil {
+			softphone.OnTrack(track)
+		}
 	})
 
 	responseMessage := SipMessage{
