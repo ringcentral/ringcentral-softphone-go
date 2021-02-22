@@ -94,8 +94,6 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
 	// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
 	sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
-	var re2 = regexp.MustCompile("\r\nm=audio ")
-	sdp = re2.ReplaceAllString(sdp, "\r\na=ice-lite\r\nm=audio ")
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
 		SDP:  sdp,
