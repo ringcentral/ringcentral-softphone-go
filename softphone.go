@@ -160,7 +160,7 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 			"Call-Id":      inviteMessage.Headers["Call-Id"],
 			"To":           fmt.Sprintf("%s;tag=%s", inviteMessage.Headers["To"], uuid.New().String()),
 		},
-		Body: answer.SDP,
+		Body: peerConnection.LocalDescription().SDP,
 	}
 
 	softphone.Send(responseMessage, nil)
