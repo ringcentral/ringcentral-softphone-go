@@ -101,7 +101,7 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	}
 	mediaEngine := webrtc.MediaEngine{}
 	if err := mediaEngine.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
+		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/pcmu", ClockRate: 48000, Channels: 2, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
 		panic(err)

@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pion/webrtc/v3"
 	"github.com/ringcentral/ringcentral-go"
+	"github.com/zaf/g711"
 )
 
 func loadDotEnv() {
@@ -67,7 +68,7 @@ func TestSoftphone(t *testing.T) {
 				log.Fatal(err)
 			}
 			// g711.DecodeUlaw(...): change u-law PCM to LPCM
-			f.Write(rtp.Payload)
+			f.Write(g711.DecodeUlaw(rtp.Payload))
 		}
 	}
 
@@ -75,3 +76,5 @@ func TestSoftphone(t *testing.T) {
 
 	select {} //block forever
 }
+
+// to play the audio: play -b 16 -e signed -c 1 -r 8000 temp.raw
