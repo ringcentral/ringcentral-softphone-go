@@ -92,13 +92,6 @@ func (softphone *Softphone) Register() {
 
 // Answer answer an incoming call
 func (softphone *Softphone) Answer(inviteMessage SipMessage) {
-	var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
-	// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
-	sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
-	offer := webrtc.SessionDescription{
-		Type: webrtc.SDPTypeOffer,
-		SDP:  sdp,
-	}
 	mediaEngine := webrtc.MediaEngine{}
 	if err := mediaEngine.RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/pcmu", ClockRate: 48000, Channels: 1, SDPFmtpLine: "", RTCPFeedback: nil},
@@ -106,7 +99,6 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 	}, webrtc.RTPCodecTypeAudio); err != nil {
 		panic(err)
 	}
-
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(&mediaEngine))
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
@@ -120,11 +112,17 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 		panic(err)
 	}
 	peerConnection.CreateDataChannel("audio", nil)
-
 	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 		panic(err)
 	}
 
+	var re = regexp.MustCompile(`\r\na=rtpmap:111 OPUS/48000/2\r\n`)
+	// to workaround a pion/webrtc bug: https://github.com/pion/webrtc/issues/879
+	sdp := re.ReplaceAllString(inviteMessage.Body, "\r\na=rtpmap:111 OPUS/48000/2\r\na=mid:0\r\n")
+	offer := webrtc.SessionDescription{
+		Type: webrtc.SDPTypeOffer,
+		SDP:  sdp,
+	}
 	err = peerConnection.SetRemoteDescription(offer)
 	if err != nil {
 		panic(err)
