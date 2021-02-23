@@ -128,7 +128,6 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 		panic(err)
 	}
 
-	// Create an answer
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
 		panic(err)
@@ -142,8 +141,6 @@ func (softphone *Softphone) Answer(inviteMessage SipMessage) {
 
 	peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		log.Println("OnTrack")
-		codec := track.Codec()
-		log.Println(codec)
 		if softphone.OnTrack != nil {
 			softphone.OnTrack(track)
 		}
